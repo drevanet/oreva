@@ -1,44 +1,60 @@
+db.collection("your_collection")
+  .addSnapshotListener((value, error) -> {
+      if (error != null) return;
 
-{
-	"hits": [
-		
-		
-	
-{
+      for (DocumentChange dc : value.getDocumentChanges()) {
+          switch (dc.getType()) {
+              case ADDED:
+                  yourArrayList.add(dc.getDocument().toObject(YourModelClass.class));
+                  break;
+              case MODIFIED:
+                  // Handle the update by replacing the old item with the new one
+                  int index = getIndexById(dc.getDocument().getId()); 
+                  if (index != -1) {
+                      yourArrayList.set(index, dc.getDocument().toObject(YourModelClass.class));
+                  }
+                  break;
+              case REMOVED:
+                  yourArrayList.remove(dc.getDocument().toObject(YourModelClass.class));
+                  break;
+          }
+      }
+      adapter.notifyDataSetChanged();
+  });
 
-			"user": "Sheffield United vs Wrexham  🔴    ",
-			"pageUrl": "https://pull.ttlidx.com/leisu/1118087742168550.flv?auth_key=1675729935-0-0-568c0fbeb33b3e96c5c99d7120454aab",
-			"type": "England - FA Cup",
-			"webFormatUrl": "https://upload.wikimedia.org/wikipedia/en/5/55/FA_Cup_2020.png"
-		},
-		
-		{
+db.collection("your_collection")
+    .addSnapshotListener(new EventListener<QuerySnapshot>() {
+        @Override
+        public void onEvent(@Nullable QuerySnapshot snapshots, @Nullable FirebaseFirestoreException error) {
+            if (error != null) return;
 
-			"user": "Burnley vs Ipswich Town  🔴    ",
-			"pageUrl": "https://pull.ttlidx.com/leisu/1118087742168550.flv?auth_key=1675729935-0-0-568c0fbeb33b3e96c5c99d7120454aab",
-			"type": "England - FA Cup",
-			"webFormatUrl": "https://upload.wikimedia.org/wikipedia/en/5/55/FA_Cup_2020.png"
-		},
-		{
+            for (DocumentChange dc : snapshots.getDocumentChanges()) {
+                YourModel model = dc.getDocument().toObject(YourModel.class);
+                
+                switch (dc.getType()) {
+                    case ADDED:
+                        yourDataList.add(model);
+                        adapter.notifyItemInserted(yourDataList.size() - 1);
+                        break;
+                    case MODIFIED:
+                        // Find the index of the modified item and update it
+                        int index = getIndexById(model); 
+                        if (index != -1) {
+                            yourDataList.set(index, model);
+                            adapter.notifyItemChanged(index);
+                        }
+                        break;
+                    case REMOVED:
+                        int removeIndex = getIndexById(model);
+                        if (removeIndex != -1) {
+                            yourDataList.remove(removeIndex);
+                            adapter.notifyItemRemoved(removeIndex);
+                        }
+                        break;
+                }
+            }
+        }
+    });
 
-			"user": "Fleetwood Town vs Sheffield Wednesday  🔴    ",
-			"pageUrl": "https://pull.ttlidx.com/leisu/1118087742168550.flv?auth_key=1675729935-0-0-568c0fbeb33b3e96c5c99d7120454aab",
-			"type": "England - FA Cup",
-			"webFormatUrl": "https://upload.wikimedia.org/wikipedia/en/5/55/FA_Cup_2020.png"
-		},
-		
-	
-	{
 
 
-
-
-			"user": " SPORTS HNCD    🔴     ",
-			"pageUrl": "http://golive.yn.lt/live/champions/01.m3u8 ",
-			"type": "FOOTBALL  ",
-			"webFormatUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQsa4g436Ye7orBzGtEux0XnuYGBprUdaqhaA&usqp=CAU"
-		}
-	]
-
-
-}
