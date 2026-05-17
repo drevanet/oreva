@@ -1,60 +1,152 @@
-db.collection("your_collection")
-  .addSnapshotListener((value, error) -> {
-      if (error != null) return;
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
 
-      for (DocumentChange dc : value.getDocumentChanges()) {
-          switch (dc.getType()) {
-              case ADDED:
-                  yourArrayList.add(dc.getDocument().toObject(YourModelClass.class));
-                  break;
-              case MODIFIED:
-                  // Handle the update by replacing the old item with the new one
-                  int index = getIndexById(dc.getDocument().getId()); 
-                  if (index != -1) {
-                      yourArrayList.set(index, dc.getDocument().toObject(YourModelClass.class));
-                  }
-                  break;
-              case REMOVED:
-                  yourArrayList.remove(dc.getDocument().toObject(YourModelClass.class));
-                  break;
-          }
-      }
-      adapter.notifyDataSetChanged();
-  });
+    <!-- The ExoPlayer Video View -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/player_view"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        app:use_controller="false" />
 
-db.collection("your_collection")
-    .addSnapshotListener(new EventListener<QuerySnapshot>() {
-        @Override
-        public void onEvent(@Nullable QuerySnapshot snapshots, @Nullable FirebaseFirestoreException error) {
-            if (error != null) return;
+    <!-- Custom Control Panel -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/player_view"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:orientation="horizontal">
 
-            for (DocumentChange dc : snapshots.getDocumentChanges()) {
-                YourModel model = dc.getDocument().toObject(YourModel.class);
-                
-                switch (dc.getType()) {
-                    case ADDED:
-                        yourDataList.add(model);
-                        adapter.notifyItemInserted(yourDataList.size() - 1);
-                        break;
-                    case MODIFIED:
-                        // Find the index of the modified item and update it
-                        int index = getIndexById(model); 
-                        if (index != -1) {
-                            yourDataList.set(index, model);
-                            adapter.notifyItemChanged(index);
-                        }
-                        break;
-                    case REMOVED:
-                        int removeIndex = getIndexById(model);
-                        if (removeIndex != -1) {
-                            yourDataList.remove(removeIndex);
-                            adapter.notifyItemRemoved(removeIndex);
-                        }
-                        break;
-                }
+        <Button
+            android:id="@+id/btn_rewind"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rewind" />
+
+        <Button
+            android:id="@+id/btn_play"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Play" />
+
+        <Button
+            android:id="@+id/btn_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pause" />
+
+        <Button
+            android:id="@+id/btn_forward"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Forward" />
+    </LinearLayout>
+</RelativeLayout>
+
+
+
+
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.MediaItem;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.ui.PlayerView;
+
+public class MainActivity extends AppCompatActivity {
+
+    private PlayerView playerView;
+    private ExoPlayer player;
+    private Button btnPlay, btnPause, btnForward, btnRewind;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // Initialize Views
+        playerView = findViewById(R.id.player_view);
+        btnPlay = findViewById(R.id.btn_play);
+        btnPause = findViewById(R.id.btn_pause);
+        btnForward = findViewById(R.id.btn_forward);
+        btnRewind = findViewById(R.id.btn_rewind);
+
+        // 1. Initialize ExoPlayer
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+
+        // 2. Prepare Media (Replace with your video URL)
+        Uri videoUri = Uri.parse("https://googleapis.com");
+        MediaItem mediaItem = MediaItem.fromUri(videoUri);
+        player.setMediaItem(mediaItem);
+        player.prepare();
+
+        // 3. Set Button Click Listeners
+        btnPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Resume or start playback
+                player.setPlayWhenReady(true);
             }
-        }
-    });
+        });
 
+        btnPause.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Pause playback
+                player.setPlayWhenReady(false);
+            }
+        });
+
+        btnForward.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Fast forward by 10 seconds (10000 milliseconds)
+                long targetPosition = player.getCurrentPosition() + 10000;
+                if (targetPosition > player.getDuration()) {
+                    targetPosition = player.getDuration();
+                }
+                player.seekTo(targetPosition);
+            }
+        });
+
+        btnRewind.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Rewind by 10 seconds (10000 milliseconds)
+                long targetPosition = player.getCurrentPosition() - 10000;
+                if (targetPosition < 0) {
+                    targetPosition = 0;
+                }
+                player.seekTo(targetPosition);
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Release the player to prevent memory leaks and background playing
+        if (player != null) {
+            player.release();
+            player = null;
+  
+    }
+}
+
+
+
+
+
+
+dependencies {
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
+}
 
 
