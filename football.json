@@ -1,32 +1,234 @@
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/searchView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:iconifiedByDefault="false"
+        android:queryHint="Search items by name..." />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</LinearLayout>
 import android.os.Bundle;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    private RecyclerView recyclerView;
+    private ItemAdapter adapter;
+    private List<ItemModel> itemList;
+    private FirebaseFirestore db;
+    private SearchView searchView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Directly show the dialog when activity starts
-        showMyAlertDialog();
+        // Initialize Firebase & Views
+        db = FirebaseFirestore.getInstance();
+        itemList = new ArrayList<>();
+        recyclerView = findViewById(R.id.recyclerView);
+        searchView = findViewById(R.id.searchView);
+
+        // Setup RecyclerView
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new ItemAdapter(itemList);
+        recyclerView.setAdapter(adapter);
+
+        // Load all data initially
+        loadAllData();
+
+        // Setup Search Listener
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                searchInFirestore(query);
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (newText.isEmpty()) {
+                    loadAllData();
+                } else {
+                    searchInFirestore(newText);
+                }
+                return false;
+            }
+        });
     }
 
-    // Private method to build and display the alert
-    private void showMyAlertDialog() {
-        // Use the [AlertDialog.Builder](https://developer.android.com/develop/ui/views/components/dialogs) class
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        
-        builder.setTitle("Welcome")
-               .setMessage("This alert appeared on activity startup.")
-               .setCancelable(false) // Prevents closing by clicking outside
-               .setPositiveButton("OK", (dialog, id) -> {
-                   dialog.dismiss(); // Closes the dialog
-               });
+    private void loadAllData() {
+        db.collection("Items").get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                itemList.clear();
+                for (DocumentSnapshot document : task.getResult()) {
+                    ItemModel item = document.toObject(ItemModel.class);
+                    if (item != null) {
+                        item.setDocumentId(document.getId());
+                        itemList.add(item);
+                    }
+                }
+                adapter.updateList(itemList);
+            } else {
+                Toast.makeText(this, "Error loading data", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
 
-        // Create and show the dialog
-        AlertDialog dialog = builder.create();
-        dialog.show();
+    private void searchInFirestore(String searchText) {
+        // Firestore simple prefix search using string range
+        db.collection("Items")
+                .orderBy("name")
+                .startAt(searchText)
+                .endAt(searchText + "\uf8ff")
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        List<ItemModel> searchList = new ArrayList<>();
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            ItemModel item = document.toObject(ItemModel.class);
+                            item.setDocumentId(document.getId());
+                            searchList.add(item);
+                        }
+                        adapter.updateList(searchList);
+                    } else {
+                        Toast.makeText(this, "Search failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+
+
+
+
     }
 }
+
+
+
+
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+import java.util.List;
+
+public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder> {
+
+    private List<ItemModel> itemList;
+
+    public ItemAdapter(List<ItemModel> itemList) {
+        this.itemList = itemList;
+    }
+
+    // Update the list dynamically when searching
+    public void updateList(List<ItemModel> newList) {
+        itemList = newList;
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    @Override
+    public ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_layout, parent, false);
+        return new ItemViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ItemViewHolder holder, int viewType) {
+        ItemModel item = itemList.get(viewType);
+        holder.tvName.setText(item.getName());
+        holder.tvCategory.setText(item.getCategory());
+    }
+
+    @Override
+    public int getItemCount() {
+        return itemList.size();
+    }
+
+    public static class ItemViewHolder extends RecyclerView.ViewHolder {
+        TextView tvName, tvCategory;
+
+        public ItemViewHolder(@NonNull View itemView) {
+            super(itemView);
+            tvName = itemView.findViewById(R.id.tvItemName);
+            tvCategory = itemView.findViewById(R.id.tvItemCategory);
+        }
+    }
+}
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16px">
+
+    <TextView
+        android:id="@+id/tvItemName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#000000" />
+
+    <TextView
+        android:id="@+id/tvItemCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="#555555" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:background="#DDDDDD" />
+</LinearLayout>
+public class ItemModel {
+    private String documentId; // Optional: Useful for updates/deletes
+    private String name;
+    private String category;
+
+    // Empty constructor is required for Firestore deserialization
+    public ItemModel() {}
+
+    public ItemModel(String name, String category) {
+        this.name = name;
+        this.category = category;
+    }
+
+    public String getDocumentId() { return documentId; }
+    public void setDocumentId(String documentId) { this.documentId = documentId; }
+    
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+}
+
+implementation 'com.google.firebase:firebase-firestore:25.1.1' 
+implementation 'androidx.recyclerview:recyclerview:1.3.2'
+
