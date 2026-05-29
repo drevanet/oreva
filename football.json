@@ -1,3 +1,69 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, NavLink, Outlet, Navigate } from 'react-router-dom';
+import { User, Settings, Bell } from 'lucide-react'; // Example icons
+
+// --- Tab Components ---
+const Profile = () => <div className="p-6 bg-white rounded-lg shadow">User Profile Settings and Info</div>;
+const Notifications = () => <div className="p-6 bg-white rounded-lg shadow">Recent Activity and Alerts</div>;
+const AccountSettings = () => <div className="p-6 bg-white rounded-lg shadow">Security and Account Preferences</div>;
+
+// --- Tab Layout Component ---
+const TabLayout = () => {
+  // Common Tailwind styles for tabs
+  const baseTabClass = "flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition-all duration-200";
+  const activeClass = `${baseTabClass} border-indigo-600 text-indigo-600 bg-indigo-50/50`;
+  const inactiveClass = `${baseTabClass} border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`;
+
+  return (
+    <div className="max-w-4xl mx-auto mt-10 px-4">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">Account Settings</h1>
+      
+      {/* Tab Navigation */}
+      <nav className="flex border-b border-gray-200 mb-6">
+        <NavLink 
+          to="/profile" 
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          <User size={18} /> Profile
+        </NavLink>
+        <NavLink 
+          to="/notifications" 
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          <Bell size={18} /> Notifications
+        </NavLink>
+        <NavLink 
+          to="/settings" 
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          <Settings size={18} /> Settings
+        </NavLink>
+      </nav>
+
+      {/* Tab Content Area (Router Outlet) */}
+      <div className="tab-content transition-opacity duration-300">
+        <Outlet />
+      </div>
+    </div>
+  );
+};
+
+// --- App Router Setup ---
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<TabLayout />}>
+          {/* Default tab redirect */}
+          <Route index element={<Navigate to="/profile" replace />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="settings" element={<AccountSettings />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 import React, { useState } from 'react';
 
