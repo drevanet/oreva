@@ -1,29 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://google.com"
-    package="com.example.myapp">
+import React, { useState } from 'react';
 
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat">
-        
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+const IframeWithLoader = () => {
+  // Initialize loading to true since the iframe hasn't loaded yet
+  const [isLoading, setIsLoading] = useState(true);
 
-        <!-- Keep the service in the default process so onTaskRemoved catches it perfectly -->
-        <service
-            android:name=".MyBackgroundService"
-            android:enabled="true"
-            android:exported="false" />
+  return (
+    <div 
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '500px',
+        // This acts as your loading background state
+        backgroundColor: isLoading ? '#f0f0f0' : 'transparent', 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      {/* Optional: You can place a spinner or text inside the container */}
+      {isLoading && <div className="spinner">Loading external content...</div>}
 
-    </application>
-</manifest>
+      <iframe
+        src="https://example.com"
+        title="Loading State Example"
+        // Triggered automatically when the content finishes downloading
+        onLoad={() => setIsLoading(false)}
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          // Hide the iframe completely until it finishes loading
+          display: isLoading ? 'none' : 'block'
+        }}
+      />
+    </div>
+  );
+};
+
+export default IframeWithLoader;
