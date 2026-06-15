@@ -1,40 +1,126 @@
+mkdir proxy-server && cd proxy-server
+npm init -y
+npm install express axios cors
+
+
+
+const express = require('express');
+const axios = require('axios');
+const cors = require('cors');
+
+const app = express();
+app.use(cors()); // Allows your React app to communicate with this server
+app.use(express.json());
+
+app.post('/bypass', async (req, res) => {
+    const { targetUrl, referrerUrl } = req.body;
+
+    if (!targetUrl) {
+        return res.status(400).json({ error: 'Target URL is required' });
+    }
+
+    try {
+        const response = await axios({
+            method: 'get',
+            url: targetUrl,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': referrerUrl || targetUrl, // Injects your custom referrer
+            },
+            maxRedirects: 5 // Follows redirects automatically
+        });
+
+        // Option A: Extract a new URL from the final response destination
+        const finalUrl = response.request.res.responseUrl || targetUrl;
+
+        // Option B: If the new URL is inside the HTML text, extract it here using regex
+        // const htmlText = response.data;
+        // const match = htmlText.match(/regex_to_find_url/);
+
+        res.json({ 
+            success: true, 
+            finalUrl: finalUrl, 
+            data: response.data 
+        });
+
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.listen(5000, () => console.log('Proxy server running on port 5000'));
+
 import React, { useState } from 'react';
 
-const IframeWithLoader = () => {
-  // Initialize loading to true since the iframe hasn't loaded yet
-  const [isLoading, setIsLoading] = useState(true);
+function ProxyExtractor() {
+  const [targetUrl, setTargetUrl] = useState('');
+  const [referrer, setReferrer] = useState('');
+  const [extractedUrl, setExtractedUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleFetch = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/bypass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUrl: targetUrl,
+          referrerUrl: referrer,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setExtractedUrl(result.finalUrl); // This holds the new URL
+      } else {
+        alert('Proxy Error: ' + result.error);
+      }
+    } catch (err) {
+      alert('Connection failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div 
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '500px',
-        // This acts as your loading background state
-        backgroundColor: isLoading ? '#f0f0f0' : 'transparent', 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      {/* Optional: You can place a spinner or text inside the container */}
-      {isLoading && <div className="spinner">Loading external content...</div>}
-
-      <iframe
-        src="https://example.com"
-        title="Loading State Example"
-        // Triggered automatically when the content finishes downloading
-        onLoad={() => setIsLoading(false)}
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          // Hide the iframe completely until it finishes loading
-          display: isLoading ? 'none' : 'block'
-        }}
+    <div style={{ padding: '20px' }}>
+      <h2>Reverse Proxy URL Extractor</h2>
+      
+      <input 
+        type="text" 
+        placeholder="Enter blocked URL" 
+        value={targetUrl} 
+        onChange={(e) => setTargetUrl(e.target.value)} 
+        style={{ width: '300px', display: 'block', marginBottom: '10px' }}
       />
+
+      <input 
+        type="text" 
+        placeholder="Enter required Referrer URL" 
+        value={referrer} 
+        onChange={(e) => setReferrer(e.target.value)} 
+        style={{ width: '300px', display: 'block', marginBottom: '10px' }}
+      />
+
+      <button onClick={handleFetch} disabled={loading}>
+        {loading ? 'Processing...' : 'Extract URL'}
+      </button>
+
+      {extractedUrl && (
+        <div style={{ marginTop: '20px' }}>
+          <strong>Extracted/Redirected URL:</strong>
+          <p>{extractedUrl}</p>
+        </div>
+      )}
     </div>
   );
-};
+}
 
-export default IframeWithLoader;
+export default ProxyExtractor;
+
+
+
