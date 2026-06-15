@@ -1,126 +1,143 @@
-mkdir proxy-server && cd proxy-server
-npm init -y
-npm install express axios cors
-
-
-
+// npm install express axios cors
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
-app.use(cors()); // Allows your React app to communicate with this server
-app.use(express.json());
+const PORT = process.env.PORT || 5000;
 
-app.post('/bypass', async (req, res) => {
-    const { targetUrl, referrerUrl } = req.body;
+// Enable CORS so your React app can communicate with this server
+app.use(cors());
 
+// Proxy endpoint
+app.get('/api/proxy', async (req, res) => {
+    const { targetUrl, referrer } = req.query;
+
+    // Validate input parameters
     if (!targetUrl) {
-        return res.status(400).json({ error: 'Target URL is required' });
+        return res.status(400).json({ error: 'Missing targetUrl parameter' });
     }
 
     try {
+        // Configure headers to mimic the allowed origin
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        };
+
+        if (referrer) {
+            headers['Referer'] = referrer;
+            headers['Origin'] = new URL(referrer).origin;
+        }
+
+        // Request the restricted content from the target server
         const response = await axios({
-            method: 'get',
+            method: 'GET',
             url: targetUrl,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': referrerUrl || targetUrl, // Injects your custom referrer
-            },
-            maxRedirects: 5 // Follows redirects automatically
+            headers: headers,
+            responseType: 'stream', // Streams data directly to save memory
+            timeout: 10000 // 10-second timeout
         });
 
-        // Option A: Extract a new URL from the final response destination
-        const finalUrl = response.request.res.responseUrl || targetUrl;
+        // Forward the content type header (e.g., video/mp4, application/x-mpegURL)
+        if (response.headers['content-type']) {
+            res.setHeader('Content-Type', response.headers['content-type']);
+        }
+        
+        if (response.headers['content-length']) {
+            res.setHeader('Content-Length', response.headers['content-length']);
+        }
 
-        // Option B: If the new URL is inside the HTML text, extract it here using regex
-        // const htmlText = response.data;
-        // const match = htmlText.match(/regex_to_find_url/);
-
-        res.json({ 
-            success: true, 
-            finalUrl: finalUrl, 
-            data: response.data 
-        });
+        // Pipe the incoming data stream straight to the React client
+        response.data.pipe(res);
 
     } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            error: error.message 
+        console.error('Proxy Error:', error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch restricted content', 
+            details: error.message 
         });
     }
 });
 
-app.listen(5000, () => console.log('Proxy server running on port 5000'));
-
+app.listen(PORT, () => {
+    console.log(`Proxy server running on port ${PORT}`);
+});
 import React, { useState } from 'react';
 
-function ProxyExtractor() {
-  const [targetUrl, setTargetUrl] = useState('');
-  const [referrer, setReferrer] = useState('');
-  const [extractedUrl, setExtractedUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+function App() {
+  // Example state for the URLs
+  const [videoUrl, setVideoUrl] = useState('https://restricted-website.com');
+  const [referrerUrl, setReferrerUrl] = useState('https://allowed-referrer.com');
+  const [proxyStreamUrl, setProxyStreamUrl] = useState('');
 
-  const handleFetch = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:5000/bypass', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetUrl: targetUrl,
-          referrerUrl: referrer,
-        }),
-      });
+  const handlePlay = (e) => {
+    e.preventDefault();
 
-      const result = await response.json();
-      if (result.success) {
-        setExtractedUrl(result.finalUrl); // This holds the new URL
-      } else {
-        alert('Proxy Error: ' + result.error);
-      }
-    } catch (err) {
-      alert('Connection failed: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    if (!videoUrl) return alert('Please enter a video URL');
+
+    // Base URL of your Node.js backend
+    const proxyBase = 'http://localhost:5000/api/proxy';
+
+    // Safely encode components to handle special characters (? and &) in URLs
+    const encodedTarget = encodeURIComponent(videoUrl);
+    const encodedReferrer = encodeURIComponent(referrerUrl);
+
+    // Construct the final proxy string
+    const finalUrl = `${proxyBase}?targetUrl=${encodedTarget}&referrer=${encodedReferrer}`;
+    
+    setProxyStreamUrl(finalUrl);
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Reverse Proxy URL Extractor</h2>
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+      <h2>Restricted Content Proxy Player</h2>
       
-      <input 
-        type="text" 
-        placeholder="Enter blocked URL" 
-        value={targetUrl} 
-        onChange={(e) => setTargetUrl(e.target.value)} 
-        style={{ width: '300px', display: 'block', marginBottom: '10px' }}
-      />
+      <form onSubmit={handlePlay} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <div>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Target Video URL:</label>
+          <input 
+            type="text" 
+            value={videoUrl} 
+            onChange={(e) => setVideoUrl(e.target.value)} 
+            style={{ width: '100%', padding: '8px', marginTop: '4px' }}
+            placeholder="https://example.com"
+          />
+        </div>
 
-      <input 
-        type="text" 
-        placeholder="Enter required Referrer URL" 
-        value={referrer} 
-        onChange={(e) => setReferrer(e.target.value)} 
-        style={{ width: '300px', display: 'block', marginBottom: '10px' }}
-      />
+        <div>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Required Referrer:</label>
+          <input 
+            type="text" 
+            value={referrerUrl} 
+            onChange={(e) => setReferrerUrl(e.target.value)} 
+            style={{ width: '100%', padding: '8px', marginTop: '4px' }}
+            placeholder="https://allowed-domain.com"
+          />
+        </div>
 
-      <button onClick={handleFetch} disabled={loading}>
-        {loading ? 'Processing...' : 'Extract URL'}
-      </button>
+        <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+          Load Media via Proxy
+        </button>
+      </form>
 
-      {extractedUrl && (
-        <div style={{ marginTop: '20px' }}>
-          <strong>Extracted/Redirected URL:</strong>
-          <p>{extractedUrl}</p>
+      {proxyStreamUrl && (
+        <div>
+          <h3>Player Output</h3>
+          <video 
+            src={proxyStreamUrl} 
+            controls 
+            autoPlay
+            style={{ width: '100%', backgroundColor: '#000', borderRadius: '4px' }}
+          >
+            Your browser does not support the video tag.
+          </video>
+          <p style={{ fontSize: '12px', color: '#666', wordBreak: 'break-all', marginTop: '8px' }}>
+            <strong>Streaming from:</strong> {proxyStreamUrl}
+          </p>
         </div>
       )}
     </div>
   );
 }
 
-export default ProxyExtractor;
-
-
-
+export default App;
