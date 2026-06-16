@@ -1,139 +1,87 @@
-// npm install express axios cors
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Enable CORS so your React app can communicate with this server
-app.use(cors());
-
-// Proxy endpoint
-app.get('/api/proxy', async (req, res) => {
-    const { targetUrl, referrer } = req.query;
-
-    // Validate input parameters
-    if (!targetUrl) {
-        return res.status(400).json({ error: 'Missing targetUrl parameter' });
-    }
-
-    try {
-        // Configure headers to mimic the allowed origin
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        };
-
-        if (referrer) {
-            headers['Referer'] = referrer;
-            headers['Origin'] = new URL(referrer).origin;
-        }
-
-        // Request the restricted content from the target server
-        const response = await axios({
-            method: 'GET',
-            url: targetUrl,
-            headers: headers,
-            responseType: 'stream', // Streams data directly to save memory
-            timeout: 10000 // 10-second timeout
-        });
-
-        // Forward the content type header (e.g., video/mp4, application/x-mpegURL)
-        if (response.headers['content-type']) {
-            res.setHeader('Content-Type', response.headers['content-type']);
-        }
-        
-        if (response.headers['content-length']) {
-            res.setHeader('Content-Length', response.headers['content-length']);
-        }
-
-        // Pipe the incoming data stream straight to the React client
-        response.data.pipe(res);
-
-    } catch (error) {
-        console.error('Proxy Error:', error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to fetch restricted content', 
-            details: error.message 
-        });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`Proxy server running on port ${PORT}`);
-});
 import React, { useState } from 'react';
 
 function App() {
-  // Example state for the URLs
-  const [videoUrl, setVideoUrl] = useState('https://restricted-website.com');
-  const [referrerUrl, setReferrerUrl] = useState('https://allowed-referrer.com');
-  const [proxyStreamUrl, setProxyStreamUrl] = useState('');
+  const [targetUrl, setTargetUrl] = useState('https://example.com');
+  const [referrerUrl, setReferrerUrl] = useState('https://google.com');
+  const [responseData, setResponseData] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handlePlay = (e) => {
+  const handleFetch = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
+    setResponseData('');
 
-    if (!videoUrl) return alert('Please enter a video URL');
+    try {
+      // Point this to your Node.js server URL
+      const proxyServerUrl = 'http://localhost:5000/api/proxy';
 
-    // Base URL of your Node.js backend
-    const proxyBase = 'http://localhost:5000/api/proxy';
+      const response = await fetch(proxyServerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUrl: targetUrl,
+          referrerUrl: referrerUrl,
+        }),
+      });
 
-    // Safely encode components to handle special characters (? and &) in URLs
-    const encodedTarget = encodeURIComponent(videoUrl);
-    const encodedReferrer = encodeURIComponent(referrerUrl);
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
 
-    // Construct the final proxy string
-    const finalUrl = `${proxyBase}?targetUrl=${encodedTarget}&referrer=${encodedReferrer}`;
-    
-    setProxyStreamUrl(finalUrl);
+      const data = await response.text();
+      setResponseData(data);
+    } catch (err) {
+      setError(err.message || 'An error occurred while fetching data.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Restricted Content Proxy Player</h2>
+    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+      <h2>Bypass Proxy Fetcher</h2>
       
-      <form onSubmit={handlePlay} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+      <form onSubmit={handleFetch} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '500px' }}>
         <div>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Target Video URL:</label>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Full Target URL:</label>
           <input 
-            type="text" 
-            value={videoUrl} 
-            onChange={(e) => setVideoUrl(e.target.value)} 
-            style={{ width: '100%', padding: '8px', marginTop: '4px' }}
-            placeholder="https://example.com"
+            type="url" 
+            value={targetUrl} 
+            onChange={(e) => setTargetUrl(e.target.value)} 
+            required 
+            style={{ width: '100%', padding: '8px' }}
           />
         </div>
 
         <div>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Required Referrer:</label>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Custom Referrer URL:</label>
           <input 
-            type="text" 
+            type="url" 
             value={referrerUrl} 
             onChange={(e) => setReferrerUrl(e.target.value)} 
-            style={{ width: '100%', padding: '8px', marginTop: '4px' }}
-            placeholder="https://allowed-domain.com"
+            style={{ width: '100%', padding: '8px' }}
           />
         </div>
 
-        <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-          Load Media via Proxy
+        <button type="submit" disabled={loading} style={{ padding: '10px', cursor: 'pointer' }}>
+          {loading ? 'Fetching...' : 'Fetch Content'}
         </button>
       </form>
 
-      {proxyStreamUrl && (
-        <div>
-          <h3>Player Output</h3>
-          <video 
-            src={proxyStreamUrl} 
-            controls 
-            autoPlay
-            style={{ width: '100%', backgroundColor: '#000', borderRadius: '4px' }}
-          >
-            Your browser does not support the video tag.
-          </video>
-          <p style={{ fontSize: '12px', color: '#666', wordBreak: 'break-all', marginTop: '8px' }}>
-            <strong>Streaming from:</strong> {proxyStreamUrl}
-          </p>
+      {error && <p style={{ color: 'red', marginTop: '20px' }}><strong>Error:</strong> {error}</p>}
+
+      {responseData && (
+        <div style={{ marginTop: '20px' }}>
+          <h3>Response Preview:</h3>
+          <iframe 
+            srcDoc={responseData} 
+            title="Proxy Output" 
+            style={{ width: '100%', height: '500px', border: '1px solid #ccc' }}
+          />
         </div>
       )}
     </div>
@@ -141,3 +89,55 @@ function App() {
 }
 
 export default App;
+
+
+
+
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Enable CORS so your React app can communicate with this server
+app.use(cors());
+app.use(express.json());
+
+// Proxy endpoint
+app.post('/api/proxy', async (req, res) => {
+  const { targetUrl, referrerUrl } = req.body;
+
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'Target URL is required' });
+  }
+
+  try {
+    // Forward the request with custom headers to bypass blocks
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      headers: {
+        'Referer': referrerUrl || targetUrl,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+      },
+      // Ensure we get the raw data back (HTML, JSON, etc.)
+      responseType: 'text'
+    });
+
+    // Send the data back to the React frontend
+    res.send(response.data);
+  } catch (error) {
+    console.error('Proxy Error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch the target URL', 
+      details: error.message 
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Proxy server running on port ${PORT}`);
+});
