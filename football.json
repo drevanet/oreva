@@ -1,278 +1,69 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-
-const app = express();
-app.use(cors());
-
-app.get('/fetch-link', async (req, res) => {
-  const targetUrl = req.query.url; // The blocked link
-  const refererUrl = req.query.referer; // The authorized referer
-
-  try {
-    const response = await axios.get(targetUrl, {
-      headers: {
-        'Referer': refererUrl,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-      },
-      maxRedirects: 5
-    });
-
-    // Send the final landing URL (play link) and data back to React
-    res.json({ success: true, finalUrl: response.request.res.responseUrl || targetUrl });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.listen(5000, () => console.log('Server running on port 5000'));
-
-
-import React, { useState } from 'react';
-
-function LinkOpener() {
-  const [loading, setLoading] = useState(false);
-
-  const handleAccessLink = async () => {
-    setLoading(true);
-    const blockedUrl = 'ENCODE_YOUR_BLOCKED_URL_HERE';
-    const referer = 'ENCODE_YOUR_ALLOWED_REFERER_HERE';
-
-    try {
-      const response = await fetch(`http://localhost:5000/fetch-link?url=${encodeURIComponent(blockedUrl)}&referer=${encodeURIComponent(referer)}`);
-      const data = await response.json();
-
-      if (data.success && data.finalUrl) {
-        // Open the successfully resolved link in a new tab with referrer policies
-        window.open(data.finalUrl, '_blank', 'noreferrer,noopener');
-      } else {
-        alert('Failed to resolve link');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button onClick={handleAccessLink} disabled={loading}>
-      {loading ? 'Resolving...' : 'Access Blocked Link'}
-    </button>
-  );
-}
-
-export default LinkOpener;
-
-
-const express = require('express');
-const axios = require('axios');
 const app = express();
 
-app.use(express.json());
+app.use(cors()); // Allow your React localhost to access this backend
 
-app.post('/api/bypass-link', async (req, res) => {
-  const { targetUrl, requiredReferrer } = req.body;
-
-  try {
-    const response = await axios.get(targetUrl, {
-      headers: {
-        'Referer': requiredReferrer,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      maxRedirects: 5 // Automatically follows redirects to get the final link
-    });
-
-    // Use the final URL after redirects, or parse the body if the link is inside the HTML
-    const finalLink = response.request.res.responseUrl || targetUrl;
-
-    res.json({ success: true, newLink: finalLink });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.listen(5000, () => console.log('Proxy running on port 5000'));
-
-
-
-import React, { useState } from 'react';
-
-function UrlBypasser() {
-  const [targetUrl, setTargetUrl] = useState('');
-  const [referrer, setReferrer] = useState('');
-  const [resultLink, setResultLink] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleFetchLink = async () => {
-    setLoading(true);
+app.get('/proxy-stream', async (req, res) => {
     try {
-      const response = await fetch('/api/bypass-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl, requiredReferrer: referrer }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setResultLink(data.newLink);
-      } else {
-        alert('Failed to fetch link');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const { url } = req.query; // Pass the target m3u8 URL as a query param
+        if (!url) return res.status(400).send('URL is required');
 
-  return (
-    <div>
-      <input 
-        placeholder="Blocked URL" 
-        value={targetUrl} 
-        onChange={(e) => setTargetUrl(e.target.value)} 
-      />
-      <input 
-        placeholder="Required Referrer URL" 
-        value={referrer} 
-        onChange={(e) => setReferrer(e.target.value)} 
-      />
-      <button onClick={handleFetchLink} disabled={loading}>
-        {loading ? 'Processing...' : 'Get Accessible Link'}
-      </button>
-
-      {resultLink && (
-        <div>
-          <p>Accessible Link:</p>
-          <a href={resultLink} target="_blank" rel="noreferrer">{resultLink}</a>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default UrlBypasser;
-
-
-
-
-const express = require('express');
-const axios = require('axios');
-const app = express();
-
-app.use(express.json());
-
-// Enable CORS for your React frontend
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    next();
-});
-
-app.post('/api/unblock', async (req, res) => {
-    const { targetUrl, referrerUrl } = req.body;
-
-    if (!targetUrl) {
-        return res.status(400).json({ error: 'Target URL is required' });
-    }
-
-    try {
+        // Fetch the external stream with the required spoofed headers
         const response = await axios({
             method: 'get',
-            url: targetUrl,
+            url: url,
+            responseType: 'stream',
             headers: {
-                // Mimic a real browser request with the required referrer
-                'Referer': referrerUrl || '',
+                'Referer': 'https://the-required-external-referrer.com',
+                'Origin': 'https://the-required-external-referrer.com',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            // Automatically follow redirects and track the final destination
-            maxRedirects: 5
+            }
         });
 
-        // response.request.res.responseUrl contains the final URL after all redirects
-        const finalUrl = response.request.res.responseUrl || targetUrl;
-
-        res.json({ success: true, finalUrl });
-    } catch (error) {
-        // If it redirected but failed to load the final page, we can still grab the redirect location
-        const finalUrl = error.request?.res?.responseUrl;
+        // Forward the content type headers (e.g., application/x-mpegURL)
+        res.setHeader('Content-Type', response.headers['content-type']);
         
-        if (finalUrl) {
-            return res.json({ success: true, finalUrl });
-        }
-
-        res.status(500).json({ error: 'Failed to resolve URL', details: error.message });
+        // Pipe the video stream data directly to React
+        response.data.pipe(res);
+    } catch (error) {
+        console.error('Proxy Error:', error.message);
+        res.status(500).send('Error fetching stream');
     }
 });
 
 app.listen(5000, () => console.log('Proxy server running on port 5000'));
 
 
-import React, { useState } from 'react';
 
-function UrlResolver() {
-  const [targetUrl, setTargetUrl] = useState('');
-  const [referrerUrl, setReferrerUrl] = useState('');
-  const [resultLink, setResultLink] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleResolve = async () => {
-    setLoading(true);
-    setResultLink('');
+import React from 'react';
+import ReactPlayer from 'react-player';
 
-    try {
-      const response = await fetch('http://localhost:5000/api/unblock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl, referrerUrl }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setResultLink(data.finalUrl);
-      } else {
-        alert('Error: ' + data.error);
-      }
-    } catch (err) {
-      alert('Failed to connect to backend server.');
-    } finally {
-      setLoading(false);
-    }
-  };
+function VideoPlayer() {
+  const targetM3u8 = 'https://external-video-provider.com';
+  
+  // Point to your local Node.js proxy server and encode the target URL
+  const proxiedUrl = `http://localhost:5000/proxy-stream?url=${encodeURIComponent(targetM3u8)}`;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>Bypass Blocked URL</h3>
-      <input 
-        type="text" 
-        placeholder="Target URL" 
-        value={targetUrl} 
-        onChange={(e) => setTargetUrl(e.target.value)} 
-        style={{ display: 'block', margin: '10px 0', width: '300px' }}
+    <div style={{ width: '640px', height: '360px' }}>
+      <ReactPlayer 
+        url={proxiedUrl} 
+        controls 
+        playing
+        width="100%"
+        height="100%"
+        config={{
+          file: {
+            forceHLS: true // Ensures the browser treats the proxied stream as HLS
+          }
+        }}
       />
-      <input 
-        type="text" 
-        placeholder="Referrer URL (Optional)" 
-        value={referrerUrl} 
-        onChange={(e) => setReferrerUrl(e.target.value)} 
-        style={{ display: 'block', margin: '10px 0', width: '300px' }}
-      />
-      <button onClick={handleResolve} disabled={loading}>
-        {loading ? 'Resolving...' : 'Get Link'}
-      </button>
-
-      {resultLink && (
-        <div style={{ marginTop: '20px' }}>
-          <strong>Resolved Link:</strong> <a href={resultLink} target="_blank" rel="noreferrer">{resultLink}</a>
-        </div>
-      )}
     </div>
   );
 }
 
-export default UrlResolver;
-
-
-
-
+export default VideoPlayer;
 
