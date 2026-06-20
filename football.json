@@ -1,69 +1,139 @@
+
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+
 const app = express();
+app.use(cors()); // Allow requests from your React application
 
-app.use(cors()); // Allow your React localhost to access this backend
+app.get('/api/proxy-video', async (req, res) => {
+    const videoUrl = req.query.url;
+    const customReferrer = req.query.referrer;
 
-app.get('/proxy-stream', async (req, res) => {
+    if (!videoUrl) {
+        return res.status(400).send("Missing 'url' query parameter.");
+    }
+
     try {
-        const { url } = req.query; // Pass the target m3u8 URL as a query param
-        if (!url) return res.status(400).send('URL is required');
+        // Forward the browser's Byte Range request to support seeking functionality
+        const rangeHeader = req.headers.range || "bytes=0-";
 
-        // Fetch the external stream with the required spoofed headers
+        // Fetch stream from target provider with custom headers
         const response = await axios({
             method: 'get',
-            url: url,
+            url: videoUrl,
             responseType: 'stream',
             headers: {
-                'Referer': 'https://the-required-external-referrer.com',
-                'Origin': 'https://the-required-external-referrer.com',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'Referer': customReferrer || '',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Range': rangeHeader
             }
         });
 
-        // Forward the content type headers (e.g., application/x-mpegURL)
-        res.setHeader('Content-Type', response.headers['content-type']);
-        
-        // Pipe the video stream data directly to React
+        // Pass down the exact headers received from the original server
+        res.writeHead(response.status, {
+            'Content-Type': response.headers['content-type'] || 'video/mp4',
+            'Content-Length': response.headers['content-length'],
+            'Content-Range': response.headers['content-range'],
+            'Accept-Ranges': 'bytes',
+        });
+
+        // Pipe the stream directly back to the React app
         response.data.pipe(res);
+
     } catch (error) {
-        console.error('Proxy Error:', error.message);
-        res.status(500).send('Error fetching stream');
+        console.error("Proxy streaming failed:", error.message);
+        res.status(500).send("Error streaming video through proxy server.");
     }
 });
 
-app.listen(5000, () => console.log('Proxy server running on port 5000'));
+const PORT = 5000;
+app.listen(PORT, () => console.log(`Proxy server live on port ${PORT}`));
 
-
-
-
-import React from 'react';
+import React, { useState } from 'react';
 import ReactPlayer from 'react-player';
 
-function VideoPlayer() {
-  const targetM3u8 = 'https://external-video-provider.com';
-  
-  // Point to your local Node.js proxy server and encode the target URL
-  const proxiedUrl = `http://localhost:5000/proxy-stream?url=${encodeURIComponent(targetM3u8)}`;
+function App() {
+  const [videoInput, setVideoInput] = useState('');
+  const [referrerInput, setReferrerInput] = useState('');
+  const [proxyUrl, setProxyUrl] = useState('');
+
+  const handlePlayVideo = (e) => {
+    e.preventDefault();
+
+    if (!videoInput) return;
+
+    // Encode parameters to format them safely into a single query string URL
+    const backendEndpoint = `http://localhost:5000/api/proxy-video`;
+    const generatedProxyUrl = `${backendEndpoint}?url=${encodeURIComponent(videoInput)}&referrer=${encodeURIComponent(referrerInput)}`;
+    
+    setProxyUrl(generatedProxyUrl);
+  };
 
   return (
-    <div style={{ width: '640px', height: '360px' }}>
-      <ReactPlayer 
-        url={proxiedUrl} 
-        controls 
-        playing
-        width="100%"
-        height="100%"
-        config={{
-          file: {
-            forceHLS: true // Ensures the browser treats the proxied stream as HLS
-          }
-        }}
-      />
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <h2>Bypass Blocked Videos Proxy Player</h2>
+      
+      {/* Form configuration for custom video sources */}
+      <form onSubmit={handlePlayVideo} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <div>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Target Video URL:</label>
+          <input 
+            type="text" 
+            placeholder="https://example.com" 
+            value={videoInput} 
+            onChange={(e) => setVideoInput(e.target.value)}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+            required
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Required Referrer (Spoof Target):</label>
+          <input 
+            type="text" 
+            placeholder="https://original-authorized-website.com" 
+            value={referrerInput} 
+            onChange={(e) => setReferrerInput(e.target.value)}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+          />
+        </div>
+
+        <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+          Load Protected Video
+        </button>
+      </form>
+
+      {/* Conditional rendering of the native HTML5 player engine wrapper */}
+      <div className="player-wrapper" style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
+        {proxyUrl ? (
+          <ReactPlayer
+            url={proxyUrl}
+            className="react-player"
+            playing={true}
+            controls={true}
+            width="100%"
+            height="100%"
+            style={{ position: 'absolute', top: 0, left: 0 }}
+            config={{
+              file: {
+                forceVideo: true, // Forces ReactPlayer to use a native HTML5 video element instead of guessing by extension
+                attributes: {
+                  crossOrigin: "anonymous" // Helps avoid local canvas/CORS taint issues if adding visual modifications
+                }
+              }
+            }}
+            onError={(e) => console.error("ReactPlayer Error:", e)}
+          />
+        ) : (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff' }}>
+            Enter inputs and click load to start playback.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export default VideoPlayer;
+export default App;
 
