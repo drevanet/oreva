@@ -1,139 +1,91 @@
-
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors');
+const { Parser } = require('m3u8-parser');
 
 const app = express();
-app.use(cors()); // Allow requests from your React application
+const PORT = 3000;
 
-app.get('/api/proxy-video', async (req, res) => {
-    const videoUrl = req.query.url;
-    const customReferrer = req.query.referrer;
+// Helper to convert relative URLs to absolute URLs
+function getAbsoluteUrl(relative, base) {
+    return new URL(relative, base).href;
+}
 
-    if (!videoUrl) {
-        return res.status(400).send("Missing 'url' query parameter.");
-    }
+// 1. Manifest Proxy and Parser Endpoint
+app.get('/proxy/playlist.m3u8', async (req, res) => {
+    const remoteUrl = req.query.url;
+    if (!remoteUrl) return res.status(400).send('Missing "url" query parameter.');
 
     try {
-        // Forward the browser's Byte Range request to support seeking functionality
-        const rangeHeader = req.headers.range || "bytes=0-";
+        // Fetch the remote M3U8 content
+        const response = await axios.get(remoteUrl, { responseType: 'text' });
+        const manifestText = response.data;
+        
+        // Find the base URL of the remote stream
+        const urlObj = new URL(remoteUrl);
+        const baseUrl = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
 
-        // Fetch stream from target provider with custom headers
-        const response = await axios({
-            method: 'get',
-            url: videoUrl,
-            responseType: 'stream',
-            headers: {
-                'Referer': customReferrer || '',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Range': rangeHeader
-            }
-        });
+        // Parse the M3U8 structure
+        const parser = new Parser();
+        parser.push(manifestText);
+        parser.end();
 
-        // Pass down the exact headers received from the original server
-        res.writeHead(response.status, {
-            'Content-Type': response.headers['content-type'] || 'video/mp4',
-            'Content-Length': response.headers['content-length'],
-            'Content-Range': response.headers['content-range'],
-            'Accept-Ranges': 'bytes',
-        });
+        const manifest = parser.manifest;
+        let modifiedManifest = manifestText;
 
-        // Pipe the stream directly back to the React app
-        response.data.pipe(res);
+        // Case A: Master Playlist (Contains references to other playlists)
+        if (manifest.playlists && manifest.playlists.length > 0) {
+            manifest.playlists.forEach(playlist => {
+                const absoluteSubUrl = getAbsoluteUrl(playlist.uri, baseUrl);
+                // Rewrite the sub-playlist URI to route back to this proxy
+                const proxySubUrl = `http://localhost:${PORT}/proxy/playlist.m3u8?url=${encodeURIComponent(absoluteSubUrl)}`;
+                modifiedManifest = modifiedManifest.replace(playlist.uri, proxySubUrl);
+            });
+        } 
+        // Case B: Media Playlist (Contains references to actual .ts video segments)
+        else if (manifest.segments && manifest.segments.length > 0) {
+            manifest.segments.forEach(segment => {
+                const absoluteSegmentUrl = getAbsoluteUrl(segment.uri, baseUrl);
+                // Rewrite the segment URI to route back to the segment proxy endpoint
+                const proxySegmentUrl = `http://localhost:${PORT}/proxy/segment.ts?url=${encodeURIComponent(absoluteSegmentUrl)}`;
+                modifiedManifest = modifiedManifest.replace(segment.uri, proxySegmentUrl);
+            });
+        }
+
+        // Set correct HLS content type and return the rewritten manifest
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.setHeader('Access-Control-Allow-Origin', '*'); // Bypass CORS
+        res.send(modifiedManifest);
 
     } catch (error) {
-        console.error("Proxy streaming failed:", error.message);
-        res.status(500).send("Error streaming video through proxy server.");
+        console.error('Error parsing M3U8:', error.message);
+        res.status(500).send('Failed to parse or proxy the stream.');
     }
 });
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Proxy server live on port ${PORT}`));
+// 2. Video Segment (.ts) Proxy Endpoint
+app.get('/proxy/segment.ts', async (req, res) => {
+    const segmentUrl = req.query.url;
+    if (!segmentUrl) return res.status(400).send('Missing "url" query parameter.');
 
-import React, { useState } from 'react';
-import ReactPlayer from 'react-player';
+    try {
+        // Request the segment as a binary stream
+        const streamResponse = await axios({
+            method: 'get',
+            url: segmentUrl,
+            responseType: 'stream'
+        });
 
-function App() {
-  const [videoInput, setVideoInput] = useState('');
-  const [referrerInput, setReferrerInput] = useState('');
-  const [proxyUrl, setProxyUrl] = useState('');
+        // Forward headers and pipe the video data back to the client
+        res.setHeader('Content-Type', 'video/MP2T');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        streamResponse.data.pipe(res); // Memory efficient streaming
 
-  const handlePlayVideo = (e) => {
-    e.preventDefault();
+    } catch (error) {
+        console.error('Error proxying segment:', error.message);
+        res.status(500).send('Failed to fetch video segment.');
+    }
+});
 
-    if (!videoInput) return;
-
-    // Encode parameters to format them safely into a single query string URL
-    const backendEndpoint = `http://localhost:5000/api/proxy-video`;
-    const generatedProxyUrl = `${backendEndpoint}?url=${encodeURIComponent(videoInput)}&referrer=${encodeURIComponent(referrerInput)}`;
-    
-    setProxyUrl(generatedProxyUrl);
-  };
-
-  return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h2>Bypass Blocked Videos Proxy Player</h2>
-      
-      {/* Form configuration for custom video sources */}
-      <form onSubmit={handlePlayVideo} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-        <div>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Target Video URL:</label>
-          <input 
-            type="text" 
-            placeholder="https://example.com" 
-            value={videoInput} 
-            onChange={(e) => setVideoInput(e.target.value)}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            required
-          />
-        </div>
-
-        <div>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Required Referrer (Spoof Target):</label>
-          <input 
-            type="text" 
-            placeholder="https://original-authorized-website.com" 
-            value={referrerInput} 
-            onChange={(e) => setReferrerInput(e.target.value)}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-
-        <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-          Load Protected Video
-        </button>
-      </form>
-
-      {/* Conditional rendering of the native HTML5 player engine wrapper */}
-      <div className="player-wrapper" style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
-        {proxyUrl ? (
-          <ReactPlayer
-            url={proxyUrl}
-            className="react-player"
-            playing={true}
-            controls={true}
-            width="100%"
-            height="100%"
-            style={{ position: 'absolute', top: 0, left: 0 }}
-            config={{
-              file: {
-                forceVideo: true, // Forces ReactPlayer to use a native HTML5 video element instead of guessing by extension
-                attributes: {
-                  crossOrigin: "anonymous" // Helps avoid local canvas/CORS taint issues if adding visual modifications
-                }
-              }
-            }}
-            onError={(e) => console.error("ReactPlayer Error:", e)}
-          />
-        ) : (
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff' }}>
-            Enter inputs and click load to start playback.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default App;
-
+app.listen(PORT, () => {
+    console.log(`M3U8 Proxy Server running on http://localhost:${PORT}`);
+});
