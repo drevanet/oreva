@@ -1,91 +1,102 @@
-const express = require('express');
-const axios = require('axios');
-const { Parser } = require('m3u8-parser');
+const http = require('http');
+const https = require('https');
+const { URL } = require('url');
 
-const app = express();
-const PORT = 3000;
+const PORT = 8080;
 
-// Helper to convert relative URLs to absolute URLs
-function getAbsoluteUrl(relative, base) {
-    return new URL(relative, base).href;
-}
+// Configuration
+const TARGET_STREAM_URL = 'https://example.com';
+const REQUIRED_REFERER = 'https://example.com';
+const REQUIRED_ORIGIN = 'https://example.com';
 
-// 1. Manifest Proxy and Parser Endpoint
-app.get('/proxy/playlist.m3u8', async (req, res) => {
-    const remoteUrl = req.query.url;
-    if (!remoteUrl) return res.status(400).send('Missing "url" query parameter.');
+const server = http.createServer((req, res) => {
+    const isHttps = TARGET_STREAM_URL.startsWith('https:');
+    const lib = isHttps ? https : http;
 
-    try {
-        // Fetch the remote M3U8 content
-        const response = await axios.get(remoteUrl, { responseType: 'text' });
-        const manifestText = response.data;
-        
-        // Find the base URL of the remote stream
-        const urlObj = new URL(remoteUrl);
-        const baseUrl = urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
-
-        // Parse the M3U8 structure
-        const parser = new Parser();
-        parser.push(manifestText);
-        parser.end();
-
-        const manifest = parser.manifest;
-        let modifiedManifest = manifestText;
-
-        // Case A: Master Playlist (Contains references to other playlists)
-        if (manifest.playlists && manifest.playlists.length > 0) {
-            manifest.playlists.forEach(playlist => {
-                const absoluteSubUrl = getAbsoluteUrl(playlist.uri, baseUrl);
-                // Rewrite the sub-playlist URI to route back to this proxy
-                const proxySubUrl = `http://localhost:${PORT}/proxy/playlist.m3u8?url=${encodeURIComponent(absoluteSubUrl)}`;
-                modifiedManifest = modifiedManifest.replace(playlist.uri, proxySubUrl);
-            });
-        } 
-        // Case B: Media Playlist (Contains references to actual .ts video segments)
-        else if (manifest.segments && manifest.segments.length > 0) {
-            manifest.segments.forEach(segment => {
-                const absoluteSegmentUrl = getAbsoluteUrl(segment.uri, baseUrl);
-                // Rewrite the segment URI to route back to the segment proxy endpoint
-                const proxySegmentUrl = `http://localhost:${PORT}/proxy/segment.ts?url=${encodeURIComponent(absoluteSegmentUrl)}`;
-                modifiedManifest = modifiedManifest.replace(segment.uri, proxySegmentUrl);
-            });
+    // Parse the target URL
+    const targetUrlObj = new URL(TARGET_STREAM_URL);
+    
+    // Set headers for the target request
+    const options = {
+        hostname: targetUrlObj.hostname,
+        port: targetUrlObj.port || (isHttps ? 443 : 80),
+        path: targetUrlObj.pathname + targetUrlObj.search,
+        method: 'GET',
+        headers: {
+            'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Referer': REQUIRED_REFERER,
+            'Origin': REQUIRED_ORIGIN
         }
+    };
 
-        // Set correct HLS content type and return the rewritten manifest
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.setHeader('Access-Control-Allow-Origin', '*'); // Bypass CORS
-        res.send(modifiedManifest);
-
-    } catch (error) {
-        console.error('Error parsing M3U8:', error.message);
-        res.status(500).send('Failed to parse or proxy the stream.');
-    }
-});
-
-// 2. Video Segment (.ts) Proxy Endpoint
-app.get('/proxy/segment.ts', async (req, res) => {
-    const segmentUrl = req.query.url;
-    if (!segmentUrl) return res.status(400).send('Missing "url" query parameter.');
-
-    try {
-        // Request the segment as a binary stream
-        const streamResponse = await axios({
-            method: 'get',
-            url: segmentUrl,
-            responseType: 'stream'
+    const proxyReq = lib.request(options, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, {
+            'Content-Type': 'application/vnd.apple.mpegurl',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS'
         });
 
-        // Forward headers and pipe the video data back to the client
-        res.setHeader('Content-Type', 'video/MP2T');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        streamResponse.data.pipe(res); // Memory efficient streaming
+        if (req.method === 'OPTIONS') {
+            res.end();
+            return;
+        }
 
-    } catch (error) {
-        console.error('Error proxying segment:', error.message);
-        res.status(500).send('Failed to fetch video segment.');
-    }
+        let data = '';
+
+        // Collect the m3u8 playlist data
+        proxyRes.on('data', (chunk) => {
+            data += chunk;
+        });
+
+        proxyRes.on('end', () => {
+            // Process the m3u8 playlist to rewrite chunk/segment URLs
+            const modifiedM3U8 = processM3U8(data, TARGET_STREAM_URL);
+            res.end(modifiedM3U8);
+        });
+    });
+
+    proxyReq.on('error', (err) => {
+        res.writeHead(502);
+        res.end('Proxy Error: ' + err.message);
+    });
+
+    proxyReq.end();
 });
 
-app.listen(PORT, () => {
-    console.log(`M3U8 Proxy Server running on http://localhost:${PORT}`);
+// Parses and rewrites M3U8 chunk URLs to go through the proxy
+function processM3U8(playlistContent, baseUrl) {
+    const lines = playlistContent.split('\n');
+    const parsedBaseUrl = new URL(baseUrl);
+    const baseDomain = parsedBaseUrl.origin;
+    const basePath = parsedBaseUrl.pathname.substring(0, parsedBaseUrl.pathname.lastIndexOf('/') + 1);
+
+    const modifiedLines = lines.map(line => {
+        // Skip comments (M3U8 tags)
+        if (line.startsWith('#') || line.trim() === '') {
+            return line;
+        }
+
+        let chunkUrl = line.trim();
+
+        // Handle fully qualified URLs
+        if (chunkUrl.startsWith('http://') || chunkUrl.startsWith('https://')) {
+            return `/proxy-stream?url=${encodeURIComponent(chunkUrl)}`;
+        } 
+        // Handle absolute-path relative URLs
+        else if (chunkUrl.startsWith('/')) {
+            const absoluteUrl = `${baseDomain}${chunkUrl}`;
+            return `/proxy-stream?url=${encodeURIComponent(absoluteUrl)}`;
+        } 
+        // Handle relative-path URLs
+        else {
+            const relativeUrl = `${baseDomain}${basePath}${chunkUrl}`;
+            return `/proxy-stream?url=${encodeURIComponent(relativeUrl)}`;
+        }
+    });
+
+    return modifiedLines.join('\n');
+}
+
+server.listen(PORT, () => {
+    console.log(`M3U8 proxy server is running on http://localhost:${PORT}`);
 });
