@@ -1,102 +1,77 @@
-const http = require('http');
-const https = require('https');
-const { URL } = require('url');
+const express = require('express');
+const axios = require('axios');
+const cors = require('cors');
 
-const PORT = 8080;
+const app = express();
+app.use(cors());
 
-// Configuration
-const TARGET_STREAM_URL = 'https://example.com';
-const REQUIRED_REFERER = 'https://example.com';
-const REQUIRED_ORIGIN = 'https://example.com';
+app.get('/proxy-stream', async (req, res) => {
+  const targetUrl = req.query.url; // e.g., http://example.com
+  const refererUrl = req.query.referer; // e.g., http://example.com
 
-const server = http.createServer((req, res) => {
-    const isHttps = TARGET_STREAM_URL.startsWith('https:');
-    const lib = isHttps ? https : http;
+  if (!targetUrl || !refererUrl) {
+    return res.status(400).send('Missing URL or Referer');
+  }
 
-    // Parse the target URL
-    const targetUrlObj = new URL(TARGET_STREAM_URL);
-    
-    // Set headers for the target request
-    const options = {
-        hostname: targetUrlObj.hostname,
-        port: targetUrlObj.port || (isHttps ? 443 : 80),
-        path: targetUrlObj.pathname + targetUrlObj.search,
-        method: 'GET',
-        headers: {
-            'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Referer': REQUIRED_REFERER,
-            'Origin': REQUIRED_ORIGIN
-        }
-    };
-
-    const proxyReq = lib.request(options, (proxyRes) => {
-        res.writeHead(proxyRes.statusCode, {
-            'Content-Type': 'application/vnd.apple.mpegurl',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS'
-        });
-
-        if (req.method === 'OPTIONS') {
-            res.end();
-            return;
-        }
-
-        let data = '';
-
-        // Collect the m3u8 playlist data
-        proxyRes.on('data', (chunk) => {
-            data += chunk;
-        });
-
-        proxyRes.on('end', () => {
-            // Process the m3u8 playlist to rewrite chunk/segment URLs
-            const modifiedM3U8 = processM3U8(data, TARGET_STREAM_URL);
-            res.end(modifiedM3U8);
-        });
+  try {
+    const response = await axios.get(targetUrl, {
+      headers: {
+        'Referer': refererUrl,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      },
+      responseType: 'stream'
     });
 
-    proxyReq.on('error', (err) => {
-        res.writeHead(502);
-        res.end('Proxy Error: ' + err.message);
+    // Forward the content type and headers to the client
+    res.writeHead(200, {
+      'Content-Type': response.headers['content-type'] || 'video/mp2t',
+      'Transfer-Encoding': 'chunked'
     });
 
-    proxyReq.end();
+    response.data.pipe(res);
+  } catch (error) {
+    res.status(500).send('Error fetching stream');
+  }
 });
 
-// Parses and rewrites M3U8 chunk URLs to go through the proxy
-function processM3U8(playlistContent, baseUrl) {
-    const lines = playlistContent.split('\n');
-    const parsedBaseUrl = new URL(baseUrl);
-    const baseDomain = parsedBaseUrl.origin;
-    const basePath = parsedBaseUrl.pathname.substring(0, parsedBaseUrl.pathname.lastIndexOf('/') + 1);
-
-    const modifiedLines = lines.map(line => {
-        // Skip comments (M3U8 tags)
-        if (line.startsWith('#') || line.trim() === '') {
-            return line;
-        }
-
-        let chunkUrl = line.trim();
-
-        // Handle fully qualified URLs
-        if (chunkUrl.startsWith('http://') || chunkUrl.startsWith('https://')) {
-            return `/proxy-stream?url=${encodeURIComponent(chunkUrl)}`;
-        } 
-        // Handle absolute-path relative URLs
-        else if (chunkUrl.startsWith('/')) {
-            const absoluteUrl = `${baseDomain}${chunkUrl}`;
-            return `/proxy-stream?url=${encodeURIComponent(absoluteUrl)}`;
-        } 
-        // Handle relative-path URLs
-        else {
-            const relativeUrl = `${baseDomain}${basePath}${chunkUrl}`;
-            return `/proxy-stream?url=${encodeURIComponent(relativeUrl)}`;
-        }
-    });
-
-    return modifiedLines.join('\n');
-}
-
-server.listen(PORT, () => {
-    console.log(`M3U8 proxy server is running on http://localhost:${PORT}`);
+app.listen(5000, () => {
+  console.log('Proxy server running on http://localhost:5000');
 });
+
+
+
+
+
+import React from 'react';
+import ReactPlayer from 'react-player';
+
+const TsVideoPlayer = () => {
+  const targetTsUrl = 'ENCODE_YOUR_TARGET_TS_URL_HERE';
+  const refererServer = 'ENCODE_YOUR_REFERER_SERVER_HERE';
+
+  // Build the proxied URL
+  const proxiedUrl = `http://localhost:5000/proxy-stream?url=${encodeURIComponent(
+    targetTsUrl
+  )}&referer=${encodeURIComponent(refererServer)}`;
+
+  return (
+    <div className="player-wrapper">
+      <ReactPlayer
+        url={proxiedUrl}
+        controls={true}
+        width="100%"
+        height="100%"
+        config={{
+          file: {
+            forceVideo: true,
+            attributes: {
+              crossOrigin: 'anonymous'
+            }
+          }
+        }}
+      />
+    </div>
+  );
+};
+
+export default TsVideoPlayer;
