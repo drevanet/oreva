@@ -151,3 +151,64 @@ const VideoPlayer = () => {
 
 export default VideoPlayer;
 
+
+
+
+
+//modified
+
+
+import React, { useEffect, useRef } from 'react';
+import Hls from 'hls.js';
+
+const Home = () => {
+  const videoRef = useRef(null);
+
+  // Define target asset configurations
+  const targetVideoUrl = "https://fcdn.zillasportzz.xyz/tsn11sd/index.m3u8";
+  const proxyBaseUrl = "http://localhost:5000/proxy";
+  const requiredHeaders = "https://techno.xyz"; // Example header token, replace with actual if needed
+  
+  
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    // Base64 serialize header tokens safely for HTTP Query passage
+  
+    const finalProxyUrl = `${proxyBaseUrl}?url=${encodeURIComponent(targetVideoUrl)}&headers=${requiredHeaders}`;
+
+    let hls;
+
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        // Optional configuration adjustments for proxied fragments
+        maxBufferSize: 30 * 1000 * 1000, 
+      });
+      hls.loadSource(finalProxyUrl);
+      hls.attachMedia(videoRef.current);
+    } 
+    // Fallback for native Safari clients
+    else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      videoRef.current.src = finalProxyUrl;
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, []);
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <video 
+        ref={videoRef} 
+        controls 
+        style={{ width: '100%', height: 'auto', background: '#000' }}
+      />
+    </div>
+  );
+};
+
+export default Home;
+
