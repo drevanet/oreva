@@ -1,147 +1,32 @@
-import android.net.Uri;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import androidx.appcompat.app.AppCompatActivity;
-import com.bumptech.glide.Glide;
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.ui.PlayerView;
+import React, { useState } from 'react';
+import ReactPlayer from 'react-player';
 
-public class MainActivity extends AppCompatActivity {
+const VideoPlayer = ({ url }) => {
+  const [isLoading, setIsLoading] = useState(true);
 
-    private PlayerView playerView;
-    private ExoPlayer player;
-    private ImageView ivThumbnail;
-    private ProgressBar progressBar;
+  return (
+    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-900">
+      
+      {/* Loading Background & Spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-800/80 backdrop-blur-sm">
+          <div className="w-12 h-12 border-4 border-t-blue-500 border-b-blue-500 border-gray-300 rounded-full animate-spin"></div>
+          <span className="mt-3 text-sm text-gray-300 font-medium tracking-wide">Loading video...</span>
+        </div>
+      )}
 
-    private String videoUrl = "YOUR_VIDEO_URL_HERE";
-    private String thumbnailUrl = "YOUR_THUMBNAIL_URL_HERE";
+      {/* ReactPlayer */}
+      <ReactPlayer
+        url={url}
+        width="100%"
+        height="100%"
+        playing={true}
+        controls={true}
+        onReady={() => setIsLoading(false)}
+        onBuffer={() => setIsLoading(true)}
+      />
+    </div>
+  );
+};
 
-    // Variables for resuming position
-    private long playbackPosition = 0;
-    private int currentWindow = 0;
-    private boolean playWhenReady = true;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        playerView = findViewById(R.id.player_view);
-        ivThumbnail = findViewById(R.id.iv_thumbnail);
-        progressBar = findViewById(R.id.progress_bar);
-
-        // Load Thumbnail before video starts (Using Glide)
-        Glide.with(this)
-             .load(thumbnailUrl)
-             .into(ivThumbnail);
-    }
-
-    private void initializePlayer() {
-        if (player == null) {
-            // Build the ExoPlayer instance
-            player = new ExoPlayer.Builder(this).build();
-            playerView.setPlayer(player);
-
-            // Set the MediaItem
-            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
-            player.setMediaItem(mediaItem);
-            
-            // Restore playback position
-            player.seekTo(currentWindow, playbackPosition);
-            player.setPlayWhenReady(playWhenReady);
-            player.prepare();
-
-            // Listen to player events
-            player.addListener(new Player.Listener() {
-                @Override
-                public void onPlaybackStateChanged(int playbackState) {
-                    if (playbackState == Player.STATE_READY) {
-                        // Once video is ready to play, hide thumbnail & progress bar
-                        ivThumbnail.setVisibility(View.GONE);
-                        progressBar.setVisibility(View.GONE);
-                    } else if (playbackState == Player.STATE_BUFFERING) {
-                        progressBar.setVisibility(View.VISIBLE);
-                    }
-                }
-            });
-        }
-    }
-
-    private void releasePlayer() {
-        if (player != null) {
-            playbackPosition = player.getCurrentPosition();
-            currentWindow = player.getCurrentMediaItemIndex();
-            playWhenReady = player.getPlayWhenReady();
-            
-            player.release();
-            player = null;
-        }
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        initializePlayer();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (player != null) {
-            player.seekTo(currentWindow, playbackPosition);
-            player.setPlayWhenReady(playWhenReady);
-        }
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        releasePlayer();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        releasePlayer();
-
-
-
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://android.com"
-    xmlns:app="http://android.com"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/black">
-
-    <!-- The ExoPlayer View -->
-    <com.google.android.exoplayer2.ui.PlayerView
-        android:id="@+id/player_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:use_controller="true"
-        app:resize_mode="fit" />
-
-    <!-- Thumbnail ImageView -->
-    <ImageView
-        android:id="@+id/iv_thumbnail"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:visibility="visible" />
-
-    <!-- Progress Bar (Buffering indicator) -->
-    <ProgressBar
-        android:id="@+id/progress_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone" />
-
-</FrameLayout>
-
-    }
-}
+export default VideoPlayer;
