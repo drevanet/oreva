@@ -1,129 +1,146 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://android.com"
-    package="com.example.fullscreenwebview">
 
-    <!-- 1. Request Internet Permission -->
-    <uses-permission android:name="android.permission.INTERNET" />
-
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar"> <!-- 2. Remove default action bar -->
-        
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="landscape" 
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize"> <!-- 3. Lock to Landscape and manage config changes -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-
-</manifest>
-
-
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://android.com"
-    xmlns:tools="http://android.com"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-</FrameLayout>
-
-
-
-
-package com.example.fullscreenwebview;
-
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.widget.ImageButton;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private WebView webView;
+    private PlayerView playerView;
+    private ExoPlayer player;
+    private ImageButton btnPlay, btnPause;
+    
+    private long playbackPosition = 0;
+    private boolean playWhenReady = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 1. Initialize WebView
-        webView = findViewById(R.id.webView);
+        playerView = findViewById(R.id.player_view);
+        btnPlay = playerView.findViewById(R.id.btn_custom_play);
+        btnPause = playerView.findViewById(R.id.btn_custom_pause);
 
-        // 2. Configure WebView Settings
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true); // Enables modern web features
-        webSettings.setDomStorageEnabled(true);  // Ensures local database features function
+        initializePlayer();
+        setupCustomButtons();
+    }
 
-        // 3. Keep web navigation inside the app instead of launching system browser
-        webView.setWebViewClient(new WebViewClient());
+    private void initializePlayer() {
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
 
-        // 4. Load your targeted URL
-        webView.loadUrl("https://google.com");
+        MediaItem mediaItem = MediaItem.fromUri("YOUR_MEDIA_URL_HERE");
+        player.setMediaItem(mediaItem);
+        player.setPlayWhenReady(playWhenReady);
+        player.seekTo(playbackPosition);
+        player.prepare();
+    }
+
+    private void setupCustomButtons() {
+        // Toggle visibility initially
+        updateButtonStates(player.isPlaying());
+
+        btnPlay.setOnClickListener(v -> {
+            player.setPlayWhenReady(true);
+            updateButtonStates(true);
+        });
+
+        btnPause.setOnClickListener(v -> {
+            player.setPlayWhenReady(false);
+            updateButtonStates(false);
+        });
+
+        // Listen for internal player state changes (e.g., if video finishes or is interrupted)
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onIsPlayingChanged(boolean isPlaying) {
+                updateButtonStates(isPlaying);
+            }
+        });
+    }
+
+    private void updateButtonStates(boolean isPlaying) {
+        if (isPlaying) {
+            btnPlay.setVisibility(View.GONE);
+            btnPause.setVisibility(View.VISIBLE);
+        } else {
+            btnPlay.setVisibility(View.VISIBLE);
+            btnPause.setVisibility(View.GONE);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Hide system UI whenever the activity regains focus
-        hideSystemUI();
-    }
-
-    /**
-     * Hides status, navigation, and action bars safely across modern and legacy Android versions.
-     */
-    private void hideSystemUI() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Modern API 30+ Immersive UI Handling
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-            }
+        if (player == null) {
+            initializePlayer();
         } else {
-            // Legacy API 19-29 Immersive UI Handling
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-            );
+            player.seekTo(playbackPosition);
+            player.setPlayWhenReady(playWhenReady);
         }
     }
 
-    /**
-     * Enables hardware back button to navigate backwards in web history instead of instantly closing the app.
-     */
     @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
+    protected void onPause() {
+        super.onPause();
+        if (player != null) {
+            playbackPosition = player.getCurrentPosition();
+            playWhenReady = player.getPlayWhenReady();
+            player.release();
+            player = null;
         }
     }
 }
 
 
+<com.google.android.exoplayer2.ui.PlayerView
+    android:id="@+id/player_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:use_controller="true"
+    app:controller_layout_id="@layout/custom_exo_controls"/>
 
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout 
+    xmlns:android="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#80000000">
+
+    <!-- Seek bar -->
+    <com.google.android.exoplayer2.ui.DefaultTimeBar
+        android:id="@id/exo_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <!-- Custom Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btn_custom_play"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_media_play"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+        <ImageButton
+            android:id="@+id/btn_custom_pause"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_media_pause"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+    </LinearLayout>
+</LinearLayout>
