@@ -1,8 +1,10 @@
-
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
+import com.bumptech.glide.Glide;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
@@ -12,9 +14,15 @@ public class MainActivity extends AppCompatActivity {
 
     private PlayerView playerView;
     private ExoPlayer player;
-    private ImageButton btnPlay, btnPause;
-    
+    private ImageView ivThumbnail;
+    private ProgressBar progressBar;
+
+    private String videoUrl = "YOUR_VIDEO_URL_HERE";
+    private String thumbnailUrl = "YOUR_THUMBNAIL_URL_HERE";
+
+    // Variables for resuming position
     private long playbackPosition = 0;
+    private int currentWindow = 0;
     private boolean playWhenReady = true;
 
     @Override
@@ -23,124 +31,117 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         playerView = findViewById(R.id.player_view);
-        btnPlay = playerView.findViewById(R.id.btn_custom_play);
-        btnPause = playerView.findViewById(R.id.btn_custom_pause);
+        ivThumbnail = findViewById(R.id.iv_thumbnail);
+        progressBar = findViewById(R.id.progress_bar);
 
-        initializePlayer();
-        setupCustomButtons();
+        // Load Thumbnail before video starts (Using Glide)
+        Glide.with(this)
+             .load(thumbnailUrl)
+             .into(ivThumbnail);
     }
 
     private void initializePlayer() {
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
+        if (player == null) {
+            // Build the ExoPlayer instance
+            player = new ExoPlayer.Builder(this).build();
+            playerView.setPlayer(player);
 
-        MediaItem mediaItem = MediaItem.fromUri("YOUR_MEDIA_URL_HERE");
-        player.setMediaItem(mediaItem);
-        player.setPlayWhenReady(playWhenReady);
-        player.seekTo(playbackPosition);
-        player.prepare();
+            // Set the MediaItem
+            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
+            player.setMediaItem(mediaItem);
+            
+            // Restore playback position
+            player.seekTo(currentWindow, playbackPosition);
+            player.setPlayWhenReady(playWhenReady);
+            player.prepare();
+
+            // Listen to player events
+            player.addListener(new Player.Listener() {
+                @Override
+                public void onPlaybackStateChanged(int playbackState) {
+                    if (playbackState == Player.STATE_READY) {
+                        // Once video is ready to play, hide thumbnail & progress bar
+                        ivThumbnail.setVisibility(View.GONE);
+                        progressBar.setVisibility(View.GONE);
+                    } else if (playbackState == Player.STATE_BUFFERING) {
+                        progressBar.setVisibility(View.VISIBLE);
+                    }
+                }
+            });
+        }
     }
 
-    private void setupCustomButtons() {
-        // Toggle visibility initially
-        updateButtonStates(player.isPlaying());
-
-        btnPlay.setOnClickListener(v -> {
-            player.setPlayWhenReady(true);
-            updateButtonStates(true);
-        });
-
-        btnPause.setOnClickListener(v -> {
-            player.setPlayWhenReady(false);
-            updateButtonStates(false);
-        });
-
-        // Listen for internal player state changes (e.g., if video finishes or is interrupted)
-        player.addListener(new Player.Listener() {
-            @Override
-            public void onIsPlayingChanged(boolean isPlaying) {
-                updateButtonStates(isPlaying);
-            }
-        });
-    }
-
-    private void updateButtonStates(boolean isPlaying) {
-        if (isPlaying) {
-            btnPlay.setVisibility(View.GONE);
-            btnPause.setVisibility(View.VISIBLE);
-        } else {
-            btnPlay.setVisibility(View.VISIBLE);
-            btnPause.setVisibility(View.GONE);
+    private void releasePlayer() {
+        if (player != null) {
+            playbackPosition = player.getCurrentPosition();
+            currentWindow = player.getCurrentMediaItemIndex();
+            playWhenReady = player.getPlayWhenReady();
+            
+            player.release();
+            player = null;
         }
     }
 
     @Override
-    protected void onResume() {
+    public void onStart() {
+        super.onStart();
+        initializePlayer();
+    }
+
+    @Override
+    public void onResume() {
         super.onResume();
-        if (player == null) {
-            initializePlayer();
-        } else {
-            player.seekTo(playbackPosition);
+        if (player != null) {
+            player.seekTo(currentWindow, playbackPosition);
             player.setPlayWhenReady(playWhenReady);
         }
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
-        if (player != null) {
-            playbackPosition = player.getCurrentPosition();
-            playWhenReady = player.getPlayWhenReady();
-            player.release();
-            player = null;
-        }
+        releasePlayer();
     }
-}
 
-
-<com.google.android.exoplayer2.ui.PlayerView
-    android:id="@+id/player_view"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    app:use_controller="true"
-    app:controller_layout_id="@layout/custom_exo_controls"/>
+    @Override
+    public void onStop() {
+        super.onStop();
+        releasePlayer();
 
 
 
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout 
-    xmlns:android="http://android.com"
+<FrameLayout xmlns:android="http://android.com"
+    xmlns:app="http://android.com"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="#80000000">
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
 
-    <!-- Seek bar -->
-    <com.google.android.exoplayer2.ui.DefaultTimeBar
-        android:id="@id/exo_progress"
+    <!-- The ExoPlayer View -->
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/player_view"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="match_parent"
+        app:use_controller="true"
+        app:resize_mode="fit" />
 
-    <!-- Custom Buttons -->
-    <LinearLayout
+    <!-- Thumbnail ImageView -->
+    <ImageView
+        android:id="@+id/iv_thumbnail"
         android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="visible" />
+
+    <!-- Progress Bar (Buffering indicator) -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal">
+        android:layout_gravity="center"
+        android:visibility="gone" />
 
-        <ImageButton
-            android:id="@+id/btn_custom_play"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_play"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+</FrameLayout>
 
-        <ImageButton
-            android:id="@+id/btn_custom_pause"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_pause"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
-
-    </LinearLayout>
-</LinearLayout>
+    }
+}
