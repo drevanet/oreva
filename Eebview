@@ -1,110 +1,66 @@
-export default {
-  async fetch(request, env, ctx) {
-    const urlObj = new URL(request.url);
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
-    // Handle CORS preflight options
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS'
-        }
-      });
-    }
-
-    if (urlObj.pathname !== '/proxy') {
-      return new Response('Not Found', { status: 404 });
-    }
-
-    const targetUrl = urlObj.searchParams.get('url');
-    const referrer = urlObj.searchParams.get('referrer');
-
-    if (!targetUrl) {
-      return new Response('Missing url parameter', { status: 400 });
-    }
-
-    const isM3U8 = targetUrl.includes('.m3u8');
-    const proxyHost = `${urlObj.protocol}//${urlObj.host}/proxy`;
-    const encodedReferrer = referrer ? encodeURIComponent(referrer) : '';
-
-    function resolveUrl(baseUrl, relativeUrl) {
-      if (relativeUrl.startsWith('http://') || relativeUrl.startsWith('https://')) {
-        return relativeUrl;
+export default defineConfig({
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      manifest: {
+        name: 'My PWA React App',
+        short_name: 'PWAApp',
+        theme_color: '#007bff',
+        // ... (Define icons)
       }
-      return new URL(relativeUrl, baseUrl).href;
-    }
+    })
+  ]
+})
 
-    // Safely extract origin from referrer
-    let originHeader = '';
-    if (referrer) {
-      try {
-        // Fallback for referrers missing http/https protocol
-        const safeReferrer = referrer.startsWith('http') ? referrer : `http://${referrer}`;
-        originHeader = new URL(safeReferrer).origin;
-      } catch (e) {
-        originHeader = '';
-      }
-    }
 
-    try {
-      const headers = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
-        'Referer': referrer || '',
-        'Origin': originHeader,
-        'Accept-Encoding': 'gzip, deflate, br'
-      };
+import React, { useState, useEffect } from 'react';
 
-      const response = await fetch(targetUrl, { headers });
+export default function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
 
-      if (isM3U8) {
-        const textData = await response.text();
-        const lines = textData.split('\n');
-        let rewrittenResult = '';
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
 
-        for (let line of lines) {
-          line = line.trim();
-          if (!line) continue;
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
 
-          if (line[0] === '#') {
-            if (line.includes('URI=')) {
-              line = line.replace(/URI=["']([^"']+)["']/g, (_, p1) => {
-                const abs = resolveUrl(targetUrl, p1);
-                return `URI="${proxyHost}?url=${encodeURIComponent(abs)}&referrer=${encodedReferrer}"`;
-              });
-            }
-            rewrittenResult += line + '\n';
-          } else {
-            const abs = resolveUrl(targetUrl, line);
-            rewrittenResult += `${proxyHost}?url=${encodeURIComponent(abs)}&referrer=${encodedReferrer}\n`;
-          }
-        }
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setDeferredPrompt(null);
+    setShowInstallButton(false);
+  };
 
-        return new Response(rewrittenResult, {
-          headers: {
-            'Content-Type': 'application/x-mpegURL',
-            'Cache-Control': 'public, max-age=2',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-      }
+  if (!showInstallButton) return null;
+  return (
+    <div style={{position: 'fixed', bottom: 20, /* ...styles */}}>
+      <span>Install PWA</span>
+      <button onClick={handleInstallClick}>Install</button>
+    </div>
+  );
+}
 
-      // Stream binary chunks forward safely
-      const newHeaders = new Headers(response.headers);
-      newHeaders.set('Access-Control-Allow-Origin', '*');
-      newHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
 
-      if (!newHeaders.has('Content-Type')) {
-        newHeaders.set('Content-Type', 'video/MP2T');
-      }
+import InstallPrompt from './InstallPrompt';
+function App() {
+  return (
+    <div>
+      <h1>Welcome</h1>
+      <InstallPrompt />
+    </div>
+  );
+}
 
-      return new Response(response.body, {
-        status: response.status,
-        headers: newHeaders
-      });
-
-    } catch (err) {
-      return new Response(err.message, { status: 500 });
-    }
-  }
-};
