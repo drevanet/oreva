@@ -1,66 +1,1696 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+MASTER WEBSITE RECREATION PROMPT — FINESSE WRITERS
+Create a complete, professional and fully responsive multi-page website for Finesse Writers.
 
-export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'My PWA React App',
-        short_name: 'PWAApp',
-        theme_color: '#007bff',
-        // ... (Define icons)
-      }
-    })
-  ]
-})
+The website should closely reproduce the structure, appearance, content and user experience of this reference website:
 
+Reference URL:
+https://finesse-writers.maroutuetu.chatgpt.site
 
-import React, { useState, useEffect } from 'react';
+If your platform supports importing or cloning an existing URL, inspect every accessible page of the reference website before building. Reproduce its dark editorial identity, layout rhythm, typography, imagery, content hierarchy and gold-accented interface.
 
-export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
+Do not merely create a generic website inspired by the reference. Reconstruct the same brand experience while improving technical quality, accessibility, navigation clarity and functional reliability.
 
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallButton(true);
-    };
+The principal addition is a prominent Academic Research navigation button and a dedicated Academic Research page.
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
+1. COMPANY INFORMATION
+Company name: Finesse Writers
 
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setDeferredPrompt(null);
-    setShowInstallButton(false);
-  };
+Tagline: Ideas. Stories. Impact.
 
-  if (!showInstallButton) return null;
-  return (
-    <div style={{position: 'fixed', bottom: 20, /* ...styles */}}>
-      <span>Install PWA</span>
-      <button onClick={handleInstallClick}>Install</button>
-    </div>
-  );
-}
+Brand promise:
+We bring structure, clarity and finesse to ideas that matter.
 
+Founder and Lead Writer: Ben Maro Utuetu
 
-import InstallPrompt from './InstallPrompt';
-function App() {
-  return (
-    <div>
-      <h1>Welcome</h1>
-      <InstallPrompt />
-    </div>
-  );
-}
+Email: info@finessewriters.online
 
+WhatsApp: 07055850163
+
+International WhatsApp link:
+https://wa.me/2347055850163
+
+Preferred final domain:
+https://www.finessewriters.online
+
+Do not display a physical location, street address, city or state anywhere on the website.
+
+Do not include published books because they are undergoing major revisions.
+
+2. WEBSITE PURPOSE
+The website should position Finesse Writers as a multidisciplinary professional company providing:
+
+Academic Research and Data Support
+
+Editing and Professional Writing
+
+Screen and Creative Development
+
+Translation and Localisation
+
+Curriculum and Educational Content
+
+Education and Career Guidance
+
+The primary audiences are:
+
+Undergraduate and postgraduate researchers
+
+Academic professionals
+
+Organisations and businesses
+
+Writers and filmmakers
+
+Producers and development executives
+
+Schools and educational organisations
+
+Parents and secondary-school students
+
+Translation and localisation clients
+
+International clients seeking culturally informed African content
+
+The website should feel substantial, credible and professionally established—not like a simple freelance landing page.
+
+3. VISUAL IDENTITY
+Reproduce the reference site’s premium dark editorial style.
+
+Principal colours
+Use approximately:
+
+Near-black background: #050505
+
+Secondary black: #080808
+
+Deep charcoal panel: #0D0C0A
+
+Raised charcoal panel: #15130F
+
+Metallic gold: #D8A52C
+
+Light gold: #F0CB72
+
+Warm ivory text: #F5EAD2
+
+Muted beige-grey text: #B9B09F
+
+Gold border: rgba(216, 165, 44, 0.25)
+
+Gold should be used strategically for buttons, borders, labels, status tags and important details. Do not cover the entire interface with gold.
+
+Typography
+Use an elegant editorial serif for major headings, preferably:
+
+Libre Caslon Display
+
+Cormorant Garamond
+
+Playfair Display
+
+Or the closest available alternative
+
+Use a clean modern sans-serif for body text and interface labels, preferably:
+
+DM Sans
+
+Inter
+
+Manrope
+
+Or the closest available alternative
+
+Headings should feel cinematic and editorial. Body text should remain highly readable.
+
+General appearance
+Use:
+
+Black and charcoal surfaces
+
+Metallic-gold accents
+
+Warm ivory typography
+
+Fine gold borders
+
+Restrained shadows
+
+Large editorial headings
+
+Generous spacing
+
+Premium photographic banners
+
+Sophisticated card layouts
+
+Subtle hover transitions
+
+Strong contrast
+
+Responsive mobile layouts
+
+Avoid:
+
+Bright white page backgrounds
+
+Generic corporate-blue designs
+
+Excessively rounded cards
+
+Cartoon illustrations
+
+Colourful icon sets
+
+Overcomplicated animation
+
+Fake awards or client logos
+
+Stock images containing visible branding
+
+AI-generated words inside images
+
+Excessive gradients
+
+Lorem ipsum
+
+4. IMAGE DIRECTION
+Use the official Finesse Writers logo in:
+
+Main header
+
+Homepage hero
+
+Footer
+
+Favicon or browser icon where technically appropriate
+
+Use premium images across the website instead of leaving pages completely text-based.
+
+Research and professional-writing imagery
+Use a wide editorial photograph showing a Black African research professional reviewing documents at a dark, elegant workspace. Include subtle elements such as a laptop, research charts, notebooks and books.
+
+Mood:
+
+Intelligent
+
+Calm
+
+Professional
+
+Dark
+
+Premium
+
+Gold-accented
+
+Screenwriting imagery
+Use a cinematic photograph of a Black African screenwriter working in a dark film-development studio, with screenplay pages, storyboard materials, a camera lens or clapperboard.
+
+Mood:
+
+Cinematic
+
+Ambitious
+
+Creative
+
+Dramatic amber lighting
+
+Black and bronze colour palette
+
+Translation and education imagery
+Use a polished editorial image of Black African learners or professionals collaborating around educational and language materials, notebooks and a tablet.
+
+Mood:
+
+Culturally grounded
+
+Contemporary
+
+Warm
+
+Intelligent
+
+Professional
+
+Image rules
+Use wide landscape compositions for hero banners.
+
+Maintain dark overlays so text remains readable.
+
+Write descriptive alt text for every meaningful image.
+
+Compress images and use WebP or AVIF where supported.
+
+Do not place important website copy inside the images.
+
+Do not use images with watermarks or visible third-party brands.
+
+5. HEADER AND NAVIGATION
+Create a sticky dark header with the logo on the left.
+
+Use this desktop navigation order:
+
+About
+
+Academic Research
+
+Services
+
+Screen & Creative
+
+Portfolio
+
+Translation
+
+Education
+
+Resources
+
+Payments
+
+Contact
+
+Start a Project
+
+The Academic Research navigation item must be clearly visible and link to a dedicated page:
+
+/academic-research/
+
+The Start a Project item should appear as a gold pill-shaped button.
+
+On smaller screens, collapse the navigation into an accessible mobile menu.
+
+The mobile menu must:
+
+Open and close correctly
+
+Display every navigation item
+
+Include Academic Research
+
+Include Start a Project
+
+Be keyboard accessible
+
+Close after a link is selected
+
+Not overflow the screen
+
+6. HOMEPAGE
+Create the following homepage sections in this order.
+
+6.1 Hero
+Use this principal headline:
+
+Research. Writing. Stories. Education. Refined with Finesse.
+
+Supporting text:
+
+Finesse Writers brings structure, clarity and finesse to ideas that matter through ethical research support, precise editorial work, culturally aware language services, educational development and original storytelling.
+
+Use these buttons:
+
+Start a Project
+
+Explore Services
+
+Academic Research
+
+View Screenplays
+
+The Academic Research button should link to /academic-research/.
+
+Use the premium research visual alongside the hero copy. Place the official logo in a small dark-and-gold floating panel over the image.
+
+6.2 Service Divisions
+Heading:
+
+Six divisions. One standard of care.
+
+Display six cards:
+
+Academic Research and Data
+Ethical support for research planning, methodology, instruments, analysis, interpretation and presentation.
+
+Editing and Professional Writing
+Careful editing and purpose-built writing for professionals, organisations and public-facing projects.
+
+Screen and Creative Development
+Original concepts, treatments, character bibles, screenplays, revisions and pitch materials.
+
+Translation and Localisation
+Meaningful language and cultural adaptation for organisations, educators, researchers and storytellers.
+
+Curriculum and Educational Content
+Curricula, schemes, textbooks, workbooks, assessments and digital-learning resources.
+
+Education and Career Guidance
+Tutorials, examination preparation, study planning, subject selection and career exploration.
+
+Every service card must be clickable and lead to its relevant page or section.
+
+6.3 Featured Screenplays
+Heading:
+
+Completed original screenplays
+
+Supporting text:
+
+Four original feature-film projects are available for serious production, representation, option, acquisition and development enquiries.
+
+Display:
+
+Before Morning
+
+Wrong Number, Right Person
+
+The Wedding Objection
+
+419 Reasons to Fall in Love With You
+
+Every project should show:
+
+Title
+
+Genre
+
+Completed status
+
+Short logline
+
+View Project button
+
+6.4 Why Finesse Writers
+Highlight:
+
+Ethical professional support
+
+Original work
+
+Confidentiality
+
+Clear communication
+
+Cultural awareness
+
+Multidisciplinary capability
+
+Structured project processes
+
+Careful attention to detail
+
+6.5 Working Process
+Use six numbered steps:
+
+Submit an enquiry
+
+Receive a project assessment
+
+Approve the scope and quotation
+
+Make the required payment
+
+Project development begins
+
+Review and final delivery
+
+6.6 Final CTA
+Heading:
+
+Bring us the idea. We will help shape the work.
+
+Buttons:
+
+Send an Enquiry
+
+WhatsApp Us
+
+7. ABOUT PAGE
+URL:
+
+/about/
+
+Hero heading:
+
+Ideas deserve structure, clarity and finesse.
+
+Company description:
+
+Finesse Writers is a multidisciplinary research, editorial, language, educational and story-development company serving clients who want their work handled with intelligence, integrity and purpose.
+
+Include sections for:
+
+About Us
+
+Mission
+
+Vision
+
+Core Values
+
+Brand Positioning
+
+Target Clients
+
+Founder and Lead Writer
+
+Mission
+To provide ethical, reliable and purpose-driven research, writing, editing, language and story-development services that help clients communicate ideas clearly and create meaningful impact.
+
+Vision
+To become a trusted African research, writing and story-development brand with global reach.
+
+Core values
+Excellence
+
+Integrity
+
+Originality
+
+Clarity
+
+Confidentiality
+
+Collaboration
+
+Cultural Sensitivity
+
+Continuous Learning
+
+Impact
+
+Founder profile
+Ben Maro Utuetu
+Founder and Lead Writer
+
+Ben Maro Utuetu is a Nigerian writer, researcher and creative-development professional whose work covers academic research, professional writing, educational-content development, screenwriting and story development.
+
+Verified qualifications:
+
+Bachelor of Social Work, University of Benin
+
+Master of Social Work in Medical and Mental Health, University of Benin — in progress
+
+Relevant experience includes research support, professional writing, academic editing, data-analysis support, educational-content development, classroom teaching, screenwriting and original story development.
+
+Do not include any physical location.
+
+Do not include a Business Administration qualification.
+
+8. DEDICATED ACADEMIC RESEARCH PAGE
+Create a prominent dedicated page:
+
+/academic-research/
+
+Navigation label:
+
+Academic Research
+
+Hero heading:
+
+Ethical research support from question to final presentation.
+
+Introductory text:
+
+Finesse Writers provides structured academic research and data support for undergraduate, postgraduate, doctoral, institutional and independent research projects. Every engagement is assessed according to the discipline, academic level, approved methodology, institutional guidelines and support permitted by the client’s institution.
+
+Use a research-themed hero photograph.
+
+8.1 Who the Service Is For
+Undergraduate researchers
+
+Postgraduate diploma students
+
+Master’s students
+
+Doctoral researchers
+
+Academic professionals
+
+Independent researchers
+
+Research teams
+
+Organisations conducting structured studies
+
+8.2 Problems Addressed
+Unclear research topics
+
+Weak proposal structure
+
+Difficulty organising the literature
+
+Inappropriate research methodology
+
+Poorly designed questionnaires or interview guides
+
+Difficulty selecting analytical procedures
+
+Confusing results tables
+
+Weak interpretation of findings
+
+Referencing and formatting inconsistencies
+
+Difficulty responding to supervisor comments
+
+Poor research-presentation materials
+
+8.3 Research Services
+Include:
+
+Topic refinement
+
+Research-proposal support
+
+Background and problem-statement development
+
+Literature searches
+
+Literature reviews
+
+Conceptual frameworks
+
+Theoretical frameworks
+
+Research-objective development
+
+Research questions and hypotheses
+
+Methodology development
+
+Questionnaire development
+
+Interview-guide development
+
+Quantitative data analysis
+
+Qualitative data analysis
+
+Mixed-methods research support
+
+Results presentation
+
+Tables and figures
+
+Interpretation of findings
+
+Discussion support
+
+Referencing and citation correction
+
+Academic editing
+
+Proofreading
+
+Institutional formatting
+
+Research presentations
+
+Seminar materials
+
+Journal-manuscript preparation
+
+Supervisor-comment implementation support
+
+8.4 Research Disciplines Supported
+Health and Allied Disciplines
+Nursing and Nursing Science
+
+Public Health
+
+Community Health
+
+Reproductive and Maternal Health
+
+Mental Health
+
+Primary Healthcare
+
+Health Education
+
+Healthcare Management
+
+Social and behavioural dimensions of health
+
+Social Sciences
+Social Work
+
+Sociology
+
+Community Development
+
+Gender and Development Studies
+
+Social Policy
+
+Population and Family Studies
+
+Selected psychology-related social research
+
+Political and public-sector studies
+
+Education
+Educational Planning and Administration
+
+Curriculum and Instruction
+
+Computer Science Education
+
+Educational Technology
+
+Guidance and Counselling
+
+Teacher Education
+
+School Management
+
+Measurement and Evaluation
+
+Vocational and Technical Education
+
+Business and Management
+Business Administration
+
+Management
+
+Entrepreneurship
+
+Human Resource Management
+
+Marketing
+
+Organisational Behaviour
+
+Public Administration
+
+Accounting and Finance
+
+Banking and Financial Studies
+
+Agriculture and Environmental Studies
+Agricultural Science
+
+Animal Science
+
+Crop Science
+
+Pasture and Fodder Studies
+
+Agricultural Extension
+
+Agribusiness
+
+Environmental Science
+
+Environmental Management
+
+Water-quality and pollution studies
+
+Computing and Technology-Related Research
+Computer Science Education
+
+Information and Communication Technology
+
+Educational Technology
+
+Digital Learning
+
+Technology Adoption
+
+Information Systems
+
+ICT availability, accessibility and utilisation
+
+Technology-related surveys and user studies
+
+Humanities and Language Studies
+English and Literary Studies
+
+Language and Communication
+
+History and Cultural Studies
+
+Media and Communication
+
+Creative Writing
+
+Translation and Localisation
+
+African Literature and Storytelling
+
+8.5 Research Levels
+Undergraduate projects
+
+Postgraduate diplomas
+
+Master’s dissertations
+
+Doctoral research support
+
+Independent studies
+
+Institutional research
+
+Professional research reports
+
+Journal articles
+
+Conference papers
+
+8.6 Ethical Position
+Display this prominently in a bordered notice:
+
+Finesse Writers provides research guidance, analytical assistance, editing and educational support. We do not fabricate data, invent participants, falsify references, complete examinations, impersonate students or guarantee grades, approval or publication.
+
+Clients remain responsible for understanding their research, complying with institutional requirements, obtaining necessary ethical approval and accurately representing their own participation.
+
+8.7 Academic Research Enquiry Form
+Create a functioning enquiry form containing:
+
+Full name
+
+Email
+
+WhatsApp or telephone number
+
+Institution
+
+Programme
+
+Academic level
+
+Research discipline
+
+Research topic
+
+Current project stage
+
+Service required
+
+Expected deadline
+
+Supervisor comments
+
+Project summary
+
+File upload, if the platform supports secure uploads
+
+Privacy consent checkbox
+
+Button:
+
+Submit Research Enquiry
+
+If native form storage or email delivery is unavailable, generate a formatted WhatsApp message and open:
+
+https://wa.me/2347055850163
+
+Do not create a form that appears to work but silently discards submissions.
+
+9. GENERAL SERVICES PAGE
+URL:
+
+/services/
+
+Present an overview of all six service divisions.
+
+For each division include:
+
+Who it is for
+
+Problems addressed
+
+Services offered
+
+Deliverables
+
+How clients begin
+
+Information required
+
+What is not covered
+
+Relevant CTA
+
+The Academic Research card should link to the dedicated Academic Research page rather than merely expanding inside the Services page.
+
+Use this integrity notice:
+
+Finesse Writers does not fabricate data, falsify references, plagiarise protected work, impersonate students, issue false credentials or guarantee grades, publication, production, admission or employment.
+
+10. SCREEN AND CREATIVE PAGE
+URL:
+
+/screen-creative/
+
+Hero heading:
+
+Original stories developed for the screen and page.
+
+Include:
+
+Concepts and loglines
+
+Synopses and treatments
+
+Character bibles
+
+Feature screenplays
+
+Script assessment
+
+Script revision
+
+Series development
+
+Novel development
+
+Franchise planning
+
+Pitch and submission materials
+
+Confidentiality notice:
+
+Full scripts and detailed development materials are shared selectively with verified industry professionals. Receiving a script does not transfer ownership or production rights.
+
+Active Development
+Display:
+
+The Boltman
+Feature Film
+
+Superhero Action Drama
+
+Status: In Active Development
+
+The House of Land Saga
+Four-book novel series
+
+Alternative-history romance and family saga
+
+Screen-adaptation potential
+
+Status: In Active Development
+
+Do not add other undeveloped titles without approval.
+
+11. PORTFOLIO PAGE
+URL:
+
+/portfolio/
+
+Hero heading:
+
+Four original feature films ready for serious industry enquiries.
+
+Display four substantial portfolio cards.
+
+Before Morning
+Format: Feature Film
+
+Genre: Crime Drama / Psychological Thriller
+
+Status: Completed
+
+Logline:
+
+When a guilt-ridden night security guard discovers a kidnapped twelve-year-old girl hidden inside the unfinished building he protects, saving her forces him to confront the trafficking crime he helped conceal seven years earlier.
+
+Themes:
+
+Guilt, accountability, redemption, silence and courage.
+
+Wrong Number, Right Person
+Format: Feature Film
+
+Genre: Contemporary Romantic Comedy
+
+Status: Completed
+
+Logline:
+
+An independent interior designer unknowingly falls for the same man twice—through anonymous WhatsApp messages and through a hostile professional relationship—until his decision to conceal the connection threatens both versions of their romance.
+
+Themes:
+
+Mistaken identity, digital intimacy, trust and the public and private self.
+
+The Wedding Objection
+Format: Feature Film
+
+Genre: Romantic Mystery / Contemporary Drama
+
+Status: Completed
+
+Logline:
+
+A professional premarital investigator falls for a seemingly single architect, only to discover that he is the groom in her newest case—and that his approaching marriage conceals a decades-old property scheme capable of destroying both families.
+
+Themes:
+
+Love, informed choice, trust, family loyalty, property and power.
+
+419 Reasons to Fall in Love With You
+Format: Feature Film
+
+Genre: Romantic Crime Comedy / Con-Artist Thriller
+
+Status: Completed
+
+Logline:
+
+An elite identity con artist targets a wealthy investor, unaware that he is also conning her, until their competing schemes reveal that both are being manipulated by a billionaire using their romance to seize control of a valuable corporate stake.
+
+Themes:
+
+Deception, identity, vulnerability, corporate power, trust and sacrifice.
+
+Every project should have a functional:
+
+Request Screenplay Package
+
+button.
+
+The button should open the enquiry form with the correct project already selected.
+
+Do not make complete screenplays publicly downloadable.
+
+12. TRANSLATION PAGE
+URL:
+
+/translation/
+
+Hero heading:
+
+Communicate meaning—not merely words.
+
+List these languages as potential coverage only:
+
+English
+
+Nigerian Pidgin
+
+Yoruba
+
+Igbo
+
+Urhobo
+
+Esan
+
+Wolof
+
+Display this qualification:
+
+Every language pair remains subject to the availability of a suitable translator and reviewer.
+
+Include:
+
+General translation
+
+Website localisation
+
+Marketing localisation
+
+Creative and screen localisation
+
+Educational translation
+
+Research-instrument translation
+
+Subtitles
+
+Dialogue adaptation
+
+Cultural review
+
+Tone and terminology adjustment
+
+Do not claim certified translation unless an authorised translator is available.
+
+Include a functional Request a Quote button.
+
+13. EDUCATIONAL CONTENT PAGE
+URL:
+
+/educational-content/
+
+Hero heading:
+
+Structured learning materials built with purpose.
+
+Include:
+
+Curriculum planning
+
+Subject mapping
+
+Schemes of work
+
+Textbook development
+
+Student workbooks
+
+Teacher guides
+
+Lesson materials
+
+Revision resources
+
+Assessment development
+
+Question banks
+
+Mock examinations
+
+Digital-learning content
+
+Custom educational resources
+
+Secondary-School Content Series
+Explain that junior and senior secondary materials are being developed across science, technology, business, home economics, music, language, civic and general-knowledge subjects.
+
+Display:
+
+Status: In Active Development
+
+Do not describe these materials as published, officially approved or examination-board endorsed.
+
+Finesse Tutoring Academy
+Include planned support for:
+
+Secondary-school tutorials
+
+WAEC preparation
+
+NECO preparation
+
+JAMB preparation
+
+Study skills
+
+Revision planning
+
+Homework guidance
+
+Academic-progress support
+
+Career and Education Guidance
+Include:
+
+Subject-selection guidance
+
+Study planning
+
+Career exploration
+
+Educational pathways
+
+Parent and guardian consultations
+
+State that the service does not provide psychological diagnosis, psychotherapy, guaranteed admission, guaranteed employment or guaranteed examination success.
+
+Require parent or guardian participation for minors.
+
+14. RESOURCES PAGE
+URL:
+
+/resources/
+
+Create categories for:
+
+Research Guides
+
+Writing and Editing
+
+Screenwriting Insights
+
+Educational Resources
+
+Translation and Localisation
+
+Career and Study Guidance
+
+Until real articles are supplied, label these categories:
+
+Coming Soon
+
+Do not invent articles, publication dates or author profiles.
+
+15. PAYMENTS PAGE
+URL:
+
+/payments/
+
+Explain:
+
+The client submits an enquiry.
+
+Finesse Writers assesses the project.
+
+The client receives a scope and quotation.
+
+The client approves the terms.
+
+The client receives an authorised payment link.
+
+Work begins after payment confirmation and receipt of necessary materials.
+
+Until the official Paystack Payment Page is connected, use these functional buttons:
+
+Request Deposit Link
+
+Request Balance Link
+
+Request Invoice Link
+
+Contact Payment Support
+
+Each button should open WhatsApp with the correct prewritten request.
+
+Do not display fake checkout fields.
+
+Do not collect card numbers, PINs, banking passwords or one-time passwords.
+
+Prepare the page so that official Paystack links can be added later without redesigning it.
+
+16. CONTACT PAGE
+URL:
+
+/contact/
+
+Hero heading:
+
+Tell us what you are creating.
+
+Display:
+
+Email: info@finessewriters.online
+
+WhatsApp: 07055850163
+
+Create a functional general enquiry form with:
+
+Name
+
+Email
+
+WhatsApp or telephone number
+
+Service required
+
+Project summary
+
+Deadline
+
+Privacy-consent checkbox
+
+Service options should include:
+
+General Enquiry
+
+Academic Research and Data
+
+Editing and Professional Writing
+
+Screenplay Package Request
+
+Screen and Creative Development
+
+Translation and Localisation
+
+Educational Content
+
+Tutorial or Career Guidance
+
+Payment Support
+
+Testimonial Submission
+
+The form must either:
+
+Send to a configured backend or email service; or
+
+Open a formatted WhatsApp enquiry for the user to review and send.
+
+Do not create a non-functional form.
+
+17. POLICY PAGES
+Create separate pages for:
+
+/privacy-policy/
+
+/terms/
+
+/payment-refund-policy/
+
+/revision-policy/
+
+/confidentiality-policy/
+
+/academic-integrity-policy/
+
+/intellectual-property-policy/
+
+Every policy page should have:
+
+Clear heading
+
+Table of contents or policy navigation
+
+Effective-date field
+
+Last-updated field
+
+Readable content width
+
+Proper heading hierarchy
+
+Contact information
+
+Do not invent publication dates. Use To Be Confirmed until final dates are supplied.
+
+Include links to every policy in the website footer.
+
+18. FOOTER
+Create a dark footer with three main areas:
+
+Company
+Official logo
+
+Short company description
+
+Tagline
+
+Explore
+About
+
+Academic Research
+
+Services
+
+Screen & Creative
+
+Portfolio
+
+Translation
+
+Education
+
+Resources
+
+Payments
+
+Contact
+
+Policies
+Privacy Policy
+
+Terms of Service
+
+Payment and Refund Policy
+
+Revision Policy
+
+Confidentiality Policy
+
+Academic Integrity Policy
+
+Intellectual Property Policy
+
+Also display:
+
+info@finessewriters.online
+
+WhatsApp: 07055850163
+
+Dynamic copyright year
+
+Finesse Writers. All rights reserved.
+
+19. BUTTON AND INTERACTION REQUIREMENTS
+Every button must perform a real action.
+
+Required behaviours:
+
+Start a Project → Contact page
+
+Academic Research → Academic Research page
+
+Explore Services → Services page
+
+View Screenplays → Portfolio page
+
+Send an Enquiry → Contact page
+
+WhatsApp Us → Correct WhatsApp link
+
+Request Screenplay Package → Prefilled screenplay enquiry
+
+Request Translation Quote → Prefilled translation enquiry
+
+Submit Research Enquiry → Working research form or formatted WhatsApp message
+
+Payment-link buttons → Prefilled WhatsApp request
+
+Email address → mailto:info@finessewriters.online
+
+Logo → Homepage
+
+Every navigation item → Correct page
+
+Do not use:
+
+Empty links
+
+href="#" buttons
+
+“JavaScript”
+
+Buttons without click actions
+
+Forms that silently discard submissions
+
+Payment buttons that pretend to process payments
+
+Provide visible hover, focus, pressed, loading, success and error states where appropriate.
+
+20. RESPONSIVE REQUIREMENTS
+The website must work properly on:
+
+Desktop computers
+
+Laptops
+
+Tablets
+
+Android phones
+
+iPhones
+
+At mobile widths:
+
+Convert the desktop navigation to a menu
+
+Stack cards vertically
+
+Keep buttons large enough to tap
+
+Prevent horizontal overflow
+
+Reduce heading sizes without making them small
+
+Maintain image focal points
+
+Preserve adequate contrast
+
+Keep forms easy to complete
+
+Ensure footer links remain readable
+
+Test at approximately:
+
+375 px
+
+430 px
+
+768 px
+
+1024 px
+
+1440 px
+
+21. ACCESSIBILITY
+Include:
+
+Semantic HTML
+
+One logical H1 per page
+
+Proper H2 and H3 hierarchy
+
+Descriptive image alt text
+
+Keyboard-accessible navigation
+
+Visible focus states
+
+Form labels
+
+Error messages connected to inputs
+
+Sufficient colour contrast
+
+A skip-to-content link
+
+Accessible mobile menu
+
+Support for browser zoom up to 200%
+
+Respect for reduced-motion preferences
+
+Body text should generally be at least 16 px.
+
+22. SEO AND METADATA
+Create unique titles and descriptions for every page.
+
+Example homepage title:
+
+Finesse Writers | Research, Writing, Education & Screen Development
+
+Example homepage description:
+
+Finesse Writers provides ethical academic research support, professional writing, editing, screen development, translation, localisation and educational-content services.
+
+Create metadata for:
+
+Home
+
+About
+
+Academic Research
+
+Services
+
+Screen and Creative
+
+Portfolio
+
+Translation
+
+Educational Content
+
+Resources
+
+Payments
+
+Contact
+
+Policy pages
+
+Also include:
+
+Canonical URLs
+
+Open Graph metadata
+
+X/Twitter metadata
+
+Favicon
+
+Sitemap
+
+Robots file
+
+Structured organisation data where appropriate
+
+Descriptive, search-friendly URLs
+
+Do not use the temporary ChatGPT Sites address as the canonical domain. Prepare canonical URLs for:
+
+https://www.finessewriters.online
+
+23. TECHNICAL AND EDITING REQUIREMENTS
+Build the website using the platform’s most maintainable production-ready system.
+
+The owner must be able to edit later:
+
+Page text
+
+Images
+
+Service descriptions
+
+Portfolio entries
+
+Projects in development
+
+Contact details
+
+Payment links
+
+Resource articles
+
+Testimonials
+
+Policy dates
+
+If the platform supports a visual content-management system, create editable content collections for:
+
+Services
+
+Screenplays
+
+Projects
+
+Resources
+
+Testimonials
+
+Policies
+
+Do not hard-code every item if editable collections are available.
+
+If a CMS is available, create a secure administrator role. Do not expose an unprotected public editing interface.
+
+Create reusable components for:
+
+Header
+
+Footer
+
+Hero sections
+
+Service cards
+
+Portfolio cards
+
+Buttons
+
+Notices
+
+Forms
+
+Policy navigation
+
+Calls to action
+
+24. CONTENT-INTEGRITY RULES
+Do not invent:
+
+Testimonials
+
+Client names
+
+Client logos
+
+Statistics
+
+Awards
+
+Partnerships
+
+Affiliations
+
+Published books
+
+Qualifications
+
+Certifications
+
+Office locations
+
+Company-registration numbers
+
+Translation certification
+
+Production agreements
+
+Publisher endorsements
+
+Examination-board approvals
+
+Use only the information supplied in this specification.
+
+Label incomplete work:
+
+In Active Development
+
+Label the four completed screenplays:
+
+Completed Screenplay
+
+Do not publicly expose complete scripts or confidential development materials.
+
+25. FINAL QUALITY ASSURANCE
+Before publishing, verify all of the following:
+
+The design closely matches the reference website.
+
+The site uses dark charcoal, black, gold and ivory.
+
+The official logo appears correctly.
+
+Professional visuals appear throughout the main pages.
+
+Academic Research appears in the desktop navigation.
+
+Academic Research appears in the mobile navigation.
+
+The dedicated Academic Research page is complete.
+
+Ben Maro Utuetu is the only founder name shown.
+
+No physical location is displayed.
+
+Published books are excluded.
+
+Only four screenplays are labelled completed.
+
+The Boltman and The House of Land Saga are labelled In Active Development.
+
+Every internal link works.
+
+Every button performs a real action.
+
+Every form delivers the enquiry or opens a correctly formatted WhatsApp message.
+
+Payment buttons do not imitate a live checkout.
+
+No false testimonial, award, statistic or qualification appears.
+
+Images load quickly and contain suitable alt text.
+
+The mobile menu works correctly.
+
+There is no horizontal overflow.
+
+All policy links work.
+
+Page titles and descriptions are unique.
+
+The site has a custom 404 page.
+
+The owner can edit ordinary content later.
+
+The website is ready to connect to www.finessewriters.online.
+
+After completing the build, provide:
+
+The preview URL
+
+The editable project link
+
+Instructions for editing text and images
+
+Instructions for adding portfolio projects
+
+Instructions for adding the Paystack link
+
+Instructions for connecting www.finessewriters.online
+
+A list of every functional page
+
+Confirmation that desktop and mobile testing has been completed
